@@ -29,13 +29,19 @@ class ConcurrentSpinnerStream {
     // The array of concurrent silent spinner streams to manage
     var silentSpinners: [SilentSpinnerStream] = []
 
-    private let printLock = NSLock()
     private var previousRows = 0
+    private let queue = DispatchQueue(label: "concurrent.spinner.stream")
+    private let group = DispatchGroup()
+
+    init() {
+        // Hides the cursor from console
+        print("\u{001B}[?25l", terminator: "")
+        fflush(stdout)
+    }
 
     // Renders the added silent spinner streams
-    func render() {
-        printLock.lock()
-        defer { printLock.unlock() }
+    // NOTE: Only call it from within the serial qeueue
+    private func render() {
         guard silentSpinners.count > 0 else {
             return
         }
@@ -55,31 +61,70 @@ class ConcurrentSpinnerStream {
         previousRows = silentSpinners.count
     }
 
-    // Hides the cursor from console
-    func hideCursor() {
-        previousRows = 0
-        print("\u{001B}[?25l", terminator: "")
-        fflush(stdout)
-    }
-
-    /// Shows the cursor to console
-    func showCursor() {
+    func waitAndShowCursor() {
+        // Wait until all async requests have been printed
+        _ = group.wait(timeout: .distantFuture)
+        // Shows the cursor to console
         print("\u{001B}[?25h", terminator: "")
         fflush(stdout)
     }
 
     // Adds a silent spinner stream
     func add(stream: SilentSpinnerStream) {
-        printLock.lock()
-        silentSpinners.append(stream)
-        printLock.unlock()
+        queue.async(group: group,
+                    execute: DispatchWorkItem(block: {
+            self.silentSpinners.append(stream)
+        }))
+    }
+
+    /// Execute an asynchronous task on the serial queue and optionally render the added silent spinner
+    /// streams.
+    ///
+    /// - Parameters:
+    ///   - work: The task to be completed asynchronously within the serial queue
+    ///   - render: Whether after the asynchronous execution of the task, the added silent spinner
+    ///   streams should be rendered or not.
+    func executeAsync(work: @escaping () -> Void,
+                      render: Bool = false) {
+        queue.async(group: group,
+                    execute: DispatchWorkItem(block: {
+            work()
+            if render {
+                self.render()
+            }
+        }))
+    }
+
+    func start(spinner: Spinner) {
+        executeAsync {
+            spinner.start()
+        }
+    }
+
+    func success(spinner: Spinner, _ message: String) {
+        executeAsync {
+            spinner.success(message)
+        }
+    }
+
+    func message(spinner: Spinner, _ message: String) {
+        executeAsync {
+            spinner.message(message)
+        }
+    }
+
+    func error(spinner: Spinner, _ message: String) {
+        executeAsync {
+            spinner.error(message)
+        }
     }
 }
 
 // Writes the spinner stream to a buffer, instead of the stdout
 class SilentSpinnerStream: SpinnerStream {
     var buffer = ""
-    var concurrentStream: ConcurrentSpinnerStream
+
+    private var concurrentStream: ConcurrentSpinnerStream
 
     init(concurrentStream: ConcurrentSpinnerStream) {
         self.concurrentStream = concurrentStream
@@ -87,11 +132,17 @@ class SilentSpinnerStream: SpinnerStream {
     }
 
     func write(string: String, terminator: String) {
-        if string.count == 0 {
+        guard string.count > 0 else {
             return
         }
-        buffer = string
-        concurrentStream.render()
+        concurrentStream.executeAsync(work: {
+            // If the message contains a success or an error character, treat
+            // it as the final message for that spinner stream.
+            guard !self.buffer.contains("✔") && !self.buffer.contains("✖") else {
+                return
+            }
+            self.buffer = string
+        }, render: true)
     }
 
     func hideCursor() { }
@@ -376,10 +427,9 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
             rootPath: root,
             observabilityScope: scope
         )
-        spinner.success()
+        spinner.success("Resolved graph")
 
         let concurrentStream = ConcurrentSpinnerStream()
-        concurrentStream.hideCursor()
         let group = DispatchGroup()
         let queue = DispatchQueue(label: "parser",
                                   attributes: .concurrent)
@@ -394,7 +444,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
             let spinner = Spinner(.dots8Bit,
                                   "Parsing \(dependencyString) dependency...",
                                   stream: silentStream)
-            spinner.start()
+            concurrentStream.start(spinner: spinner)
             queue.async(group: group,
                         execute: DispatchWorkItem(block: {
                 SDKS_TO_CHECK.forEach { (key, value) in
@@ -410,7 +460,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                     let foundInBuildPhase = "Found \(highlightedCode) in dependencies."
                     requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
                 }
-                spinner.success()
+                concurrentStream.success(spinner: spinner,
+                                         "Parsed \(dependencyString) dependency")
             }))
         }
 
@@ -427,7 +478,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 let spinner = Spinner(.dots8Bit,
                                       "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
                                       stream: silentStream)
-                spinner.start()
+                concurrentStream.start(spinner: spinner)
                 queue.async(group: group,
                             execute: DispatchWorkItem(block: {
                     var filePathsForParsing: [Path] = []
@@ -443,18 +494,21 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                         try parseFiles(filePathsForParsing: filePathsForParsing,
                                        requiredAPIs: &requiredAPIs,
                                        targetName: target.name,
-                                       spinner: spinner)
-                        spinner.success()
+                                       spinner: spinner,
+                                       concurrentStream: concurrentStream)
+                        concurrentStream.success(spinner: spinner,
+                                                 "Parsed \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
                     }
                     catch {
-                        spinner.error()
+                        concurrentStream.error(spinner: spinner,
+                                               "Error parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
                     }
                 }))
             }
         }
 
         _ = group.wait(timeout: .distantFuture)
-        concurrentStream.showCursor()
+        concurrentStream.waitAndShowCursor()
 
         process(requiredAPIs: requiredAPIs)
     }
@@ -470,7 +524,6 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
         print("---")
 
         let concurrentStream = ConcurrentSpinnerStream()
-        concurrentStream.hideCursor()
         let group = DispatchGroup()
         let queue = DispatchQueue(label: "parser",
                                   attributes: .concurrent)
@@ -494,7 +547,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 let spinner = Spinner(.dots8Bit,
                                       "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase...",
                                       stream: silentStream)
-                spinner.start()
+                concurrentStream.start(spinner: spinner)
                 queue.async(group: group,
                             execute: DispatchWorkItem(block: {
                     phase.files?.forEach({ file in
@@ -515,7 +568,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                             requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
                         }
                     })
-                    spinner.success()
+                    concurrentStream.success(spinner: spinner,
+                                             "Parsed \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase")
                 }))
             }
 
@@ -523,7 +577,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
             let spinner = Spinner(.dots8Bit,
                                   "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
                                   stream: silentStream)
-            spinner.start()
+            concurrentStream.start(spinner: spinner)
             queue.async(group: group,
                         execute: DispatchWorkItem(block: {
                 do {
@@ -543,17 +597,20 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                     try parseFiles(filePathsForParsing: filePathsForParsing,
                                    requiredAPIs: &requiredAPIs,
                                    targetName: target.name,
-                                   spinner: spinner)
-                    spinner.success()
+                                   spinner: spinner,
+                                   concurrentStream: concurrentStream)
+                    concurrentStream.success(spinner: spinner,
+                                             "Parsed \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
                 }
                 catch {
-                    spinner.error()
+                    concurrentStream.error(spinner: spinner,
+                                          "Error parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
                 }
             }))
         }
 
         _ = group.wait(timeout: .distantFuture)
-        concurrentStream.showCursor()
+        concurrentStream.waitAndShowCursor()
 
         process(requiredAPIs: requiredAPIs)
     }
@@ -561,7 +618,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
     func parseFiles(filePathsForParsing: [Path],
                     requiredAPIs: inout [RequiredReasonKey: Set<PresentedResult>],
                     targetName: String,
-                    spinner: Spinner) throws {
+                    spinner: Spinner,
+                    concurrentStream: ConcurrentSpinnerStream) throws {
         var fileCount = 1
         for filePath in filePathsForParsing {
             guard let fileHandle = FileHandle(forReadingAtPath: filePath.string) else {
@@ -586,7 +644,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                                                                 parsedResult: parsedResult))
             }
 
-            spinner.message("Parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files (\(fileCount)/\(filePathsForParsing.count))...")
+            concurrentStream.message(spinner: spinner,
+                                     "Parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files (\(fileCount)/\(filePathsForParsing.count))...")
             fileCount += 1
         }
     }

@@ -24,6 +24,64 @@ import func TSCBasic.tsc_await
 import PathKit
 import XcodeProj
 
+enum RequiredReasonKey: CaseIterable {
+    case FILE_TIMESTAMP_APIS_KEY
+    case SYSTEM_BOOT_APIS_KEY
+    case DISK_SPACE_APIS_KEY
+    case ACTIVE_KEYBOARD_APIS_KEY
+    case USER_DEFAULTS_APIS_KEY
+    case CORELOCATION_FRAMEWORK_KEY
+    case HEALTHKIT_FRAMEWORK_KEY
+    case CRASH_FRAMEWORK_KEY
+    case CONTACTS_FRAMEWORK_KEY
+    
+    var description: String {
+        switch self {
+        case .FILE_TIMESTAMP_APIS_KEY:
+            return "File Timestamp APIs"
+        case .SYSTEM_BOOT_APIS_KEY:
+            return "System boot time APIs"
+        case .DISK_SPACE_APIS_KEY:
+            return "Disk space APIs"
+        case .ACTIVE_KEYBOARD_APIS_KEY:
+            return "Active keyboard APIs"
+        case .USER_DEFAULTS_APIS_KEY:
+            return "User defaults APIs"
+        case .CORELOCATION_FRAMEWORK_KEY:
+            return "Core Location"
+        case .HEALTHKIT_FRAMEWORK_KEY:
+            return "HealthKit"
+        case .CRASH_FRAMEWORK_KEY:
+            return "Crash data"
+        case .CONTACTS_FRAMEWORK_KEY:
+            return "Contacts"
+        }
+    }
+
+    var link: String {
+        switch self {
+        case .FILE_TIMESTAMP_APIS_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278393"
+        case .SYSTEM_BOOT_APIS_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278394"
+        case .DISK_SPACE_APIS_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278397"
+        case .ACTIVE_KEYBOARD_APIS_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278400"
+        case .USER_DEFAULTS_APIS_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278401"
+        case .CORELOCATION_FRAMEWORK_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263133"
+        case .HEALTHKIT_FRAMEWORK_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263132"
+        case .CRASH_FRAMEWORK_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263159"
+        case .CONTACTS_FRAMEWORK_KEY:
+            return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263130"
+        }
+    }
+}
+
 let ALLOWED_EXTENSIONS = [
     "m",    // Objective-C
     "mm",   // Objective-C++
@@ -32,90 +90,65 @@ let ALLOWED_EXTENSIONS = [
     "swift" // Swift
 ]
 
-let FILE_TIMESTAMP_APIS_KEY = "File Timestamp APIs"
-let SYSTEM_BOOT_APIS_KEY = "System boot time APIs"
-let DISK_SPACE_APIS_KEY = "Disk space APIs"
-let ACTIVE_KEYBOARD_APIS_KEY = "Active keyboard APIs"
-let USER_DEFAULTS_APIS_KEY = "User defaults APIs"
-let CORELOCATION_FRAMEWORK_KEY = "Core Location"
-let HEALTHKIT_FRAMEWORK_KEY = "HealthKit"
-let CRASH_FRAMEWORK_KEY = "Crash data"
-let CONTACTS_FRAMEWORK_KEY = "Contacts"
-
-let LINKS_TO_APIS = [
-    FILE_TIMESTAMP_APIS_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278393",
-    SYSTEM_BOOT_APIS_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278394",
-    DISK_SPACE_APIS_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278397",
-    ACTIVE_KEYBOARD_APIS_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278400",
-    USER_DEFAULTS_APIS_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api#4278401",
-    CORELOCATION_FRAMEWORK_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263133",
-    HEALTHKIT_FRAMEWORK_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263132",
-    CRASH_FRAMEWORK_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263159",
-    CONTACTS_FRAMEWORK_KEY: "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263130",
-]
-
-let APIS_TO_CHECK = [
+// Look through the code for the listed strings (Case Sensitive)
+let APIS_TO_CHECK: [String: [RequiredReasonKey]] = [
     // Ref: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api
-    FILE_TIMESTAMP_APIS_KEY: [
-        "creationDate",
-        "modificationDate",
-        "fileModificationDate",
-        "contentModificationDateKey",
-        "creationDateKey",
-        "getattrlist(",
-        "getattrlistbulk(",
-        "fgetattrlist(",
-        "fstat(",
-        "fstatat(",
-        "lstat(",
-        "getattrlistat("
-    ],
-    SYSTEM_BOOT_APIS_KEY: [
-        "systemUptime",
-        "mach_absolute_time("
-    ],
-    DISK_SPACE_APIS_KEY: [
-        "volumeAvailableCapacityKey",
-        "volumeAvailableCapacityForImportantUsageKey",
-        "volumeAvailableCapacityForOpportunisticUsageKey",
-        "volumeTotalCapacityKey",
-        "systemFreeSize",
-        "systemSize",
-        "statfs(",
-        "statvfs(",
-        "fstatfs(",
-        "fstatvfs(",
-        "getattrlist(",
-        "fgetattrlist(",
-        "getattrlistat("
-    ],
-    ACTIVE_KEYBOARD_APIS_KEY: [
-        "activeInputModes"
-    ],
-    USER_DEFAULTS_APIS_KEY: [
-        "UserDefaults"
-    ],
+
+    "creationDate": [.FILE_TIMESTAMP_APIS_KEY],
+    "modificationDate": [.FILE_TIMESTAMP_APIS_KEY],
+    "fileModificationDate": [.FILE_TIMESTAMP_APIS_KEY],
+    "contentModificationDateKey": [.FILE_TIMESTAMP_APIS_KEY],
+    "creationDateKey": [.FILE_TIMESTAMP_APIS_KEY],
+    "getattrlist(": [.FILE_TIMESTAMP_APIS_KEY, .DISK_SPACE_APIS_KEY], // also covers: fgetattrlist(
+    "getattrlistbulk(": [.FILE_TIMESTAMP_APIS_KEY],
+    "fstat(": [.FILE_TIMESTAMP_APIS_KEY],
+    "fstatat(": [.FILE_TIMESTAMP_APIS_KEY],
+    "lstat(": [.FILE_TIMESTAMP_APIS_KEY],
+    "getattrlistat(": [.FILE_TIMESTAMP_APIS_KEY, .DISK_SPACE_APIS_KEY],
+    "systemUptime": [.SYSTEM_BOOT_APIS_KEY],
+    "mach_absolute_time(": [.SYSTEM_BOOT_APIS_KEY],
+
+    "volumeAvailableCapacityKey": [.DISK_SPACE_APIS_KEY],
+    "volumeAvailableCapacityForImportantUsageKey": [.DISK_SPACE_APIS_KEY],
+    "volumeAvailableCapacityForOpportunisticUsageKey": [.DISK_SPACE_APIS_KEY],
+    "volumeTotalCapacityKey": [.DISK_SPACE_APIS_KEY],
+    "systemFreeSize": [.DISK_SPACE_APIS_KEY],
+    "systemSize": [.DISK_SPACE_APIS_KEY],
+    "statfs(": [.DISK_SPACE_APIS_KEY], // also covers: fstatfs(
+    "statvfs(": [.DISK_SPACE_APIS_KEY], // also covers: fstatvfs(
+
+    "activeInputModes": [.ACTIVE_KEYBOARD_APIS_KEY],
+
+    "UserDefaults": [.USER_DEFAULTS_APIS_KEY],
 
     // Ref: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
-    CORELOCATION_FRAMEWORK_KEY: [
-        "import CoreLocation",
-        "#import <CoreLocation/CoreLocation.h>"
-    ],
-    HEALTHKIT_FRAMEWORK_KEY: [
-        "import HealthKit",
-        "#import <HealthKit/HealthKit.h>",
-        "#import <HealthKitUI/HealthKitUI.h>"
-    ],
-    CRASH_FRAMEWORK_KEY: [
-        "import Sentry",
-        "#import <Sentry/Sentry.h>"
-        // TODO: Add more third-party crash frameworks here
-    ],
-    CONTACTS_FRAMEWORK_KEY: [
-        "import Contacts",
-        "#import <ContactsUI/ContactsUI.h>",
-        "#import <Contacts/Contacts.h>"
-    ]
+
+    "import CoreLocation": [.CORELOCATION_FRAMEWORK_KEY],
+    "#import <CoreLocation/CoreLocation.h>": [.CORELOCATION_FRAMEWORK_KEY],
+
+    "import HealthKit": [.HEALTHKIT_FRAMEWORK_KEY],
+    "#import <HealthKit/HealthKit.h>": [.HEALTHKIT_FRAMEWORK_KEY],
+    "#import <HealthKitUI/HealthKitUI.h>": [.HEALTHKIT_FRAMEWORK_KEY],
+
+    "import Sentry": [.CRASH_FRAMEWORK_KEY],
+    "#import <Sentry/Sentry.h>": [.CRASH_FRAMEWORK_KEY],
+    // TODO: Add more third-party crash frameworks here
+
+    "import Contacts": [.CONTACTS_FRAMEWORK_KEY],
+    "#import <ContactsUI/ContactsUI.h>": [.CONTACTS_FRAMEWORK_KEY],
+    "#import <Contacts/Contacts.h>": [.CONTACTS_FRAMEWORK_KEY]
+]
+
+// Look through the Frameworks Build Phase or Package Dependencies for the
+// listed strings (Case Insensitive)
+let SDKS_TO_CHECK: [String: RequiredReasonKey] = [
+    // Ref: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
+
+    "sentry-cocoa": .CRASH_FRAMEWORK_KEY,
+    "Sentry": .CRASH_FRAMEWORK_KEY,
+    "CoreLocation": .CORELOCATION_FRAMEWORK_KEY,
+    "HealthKit": .HEALTHKIT_FRAMEWORK_KEY,
+    "Contacts": .CONTACTS_FRAMEWORK_KEY, // also covers ContactsUI
 ]
 
 extension SwiftSDK {
@@ -161,6 +194,18 @@ struct CliSyntaxColor {
     static let END = "\u{001B}[0;0m"
 }
 
+struct ParsedResult: Hashable {
+    var line: String
+    var lineNumber: Int?
+    var range: Range<String.Index>
+}
+
+struct PresentedResult: Hashable {
+    var filePath: String
+    var formattedLine: String?
+    var parsedResult: ParsedResult?
+}
+
 struct PrivacyManifest: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "privacy-manifest",
@@ -174,19 +219,6 @@ order to find whether your codebase makes use of Apple's required reason APIs
 """,
         version: "0.0.1",
         subcommands: [Analyze.self])
-}
-
-struct ParsedResult: Hashable {
-    var line: String
-    var lineNumber: Int
-    var range: Range<String.Index>
-    var api: String
-}
-
-struct PresentedResult: Hashable {
-    var filePath: String
-    var formattedLine: String?
-    var parsedResult: ParsedResult?
 }
 
 struct Analyze: ParsableCommand {
@@ -241,8 +273,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
     }
 
     func parseSwiftPackage(projectPath: Path) throws {
-        var requiredAPIs : [String: Set<PresentedResult>] = [:]
-        APIS_TO_CHECK.forEach { (key, value) in
+        var requiredAPIs: [RequiredReasonKey: Set<PresentedResult>] = [:]
+        RequiredReasonKey.allCases.forEach { key in
             requiredAPIs[key] = Set()
         }
         print("---")
@@ -270,6 +302,29 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
             observabilityScope: scope
         )
         spinner.success()
+
+        graph.requiredDependencies.forEach { dependency in
+            guard !dependency.kind.isRoot else {
+                return
+            }
+
+            let dependencyString = dependency.canonicalLocation.description
+
+            SDKS_TO_CHECK.forEach { (key, value) in
+                let markedResults = Self.mark(searchString: key,
+                                              in: dependencyString,
+                                              lineNumber: nil,
+                                              caseInsensitive: true,
+                                              requiredReasonKeys: [value])
+                guard let firstResult = markedResults.first?.1 else {
+                    return
+                }
+                let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
+                let foundInBuildPhase = "Found \(highlightedCode) in dependencies."
+                requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
+            }
+        }
+
         // We only care about the targets of the root packages, not the
         // dependencies
         try graph.rootPackages.forEach { package in
@@ -302,8 +357,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
     }
 
     func parseXcodeProject(projectPath: Path) throws {
-        var requiredAPIs : [String: Set<PresentedResult>] = [:]
-        APIS_TO_CHECK.forEach { (key, value) in
+        var requiredAPIs: [RequiredReasonKey: Set<PresentedResult>] = [:]
+        RequiredReasonKey.allCases.forEach { key in
             requiredAPIs[key] = Set()
         }
 
@@ -330,24 +385,22 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                                       "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase...")
                 spinner.start()
                 phase.files?.forEach({ file in
-                    guard let fullFileName = file.file?.name,
-                          let fileName = fullFileName.split(separator: ".").first else {
+                    guard let fullFileName = file.file?.name else {
                         return
                     }
 
-                    let foundInBuildPhase = "Found \(CliSyntaxColor.YELLOW)\(fullFileName)\(CliSyntaxColor.END) in \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase."
-
-                    if fileName == "CoreLocation" {
-                        requiredAPIs[CORELOCATION_FRAMEWORK_KEY]?.update(with: PresentedResult(filePath: foundInBuildPhase))
-                    }
-                    else if fileName == "HealthKit" {
-                        requiredAPIs[HEALTHKIT_FRAMEWORK_KEY]?.update(with: PresentedResult(filePath: foundInBuildPhase))
-                    }
-                    else if fileName == "Sentry" {
-                        requiredAPIs[CRASH_FRAMEWORK_KEY]?.update(with: PresentedResult(filePath: foundInBuildPhase))
-                    }
-                    else if fileName == "Contacts" || fileName == "ContactsUI" {
-                        requiredAPIs[CONTACTS_FRAMEWORK_KEY]?.update(with: PresentedResult(filePath: foundInBuildPhase))
+                    SDKS_TO_CHECK.forEach { (key, value) in
+                        let markedResults = Self.mark(searchString: key,
+                                                      in: fullFileName,
+                                                      lineNumber: nil,
+                                                      caseInsensitive: true,
+                                                      requiredReasonKeys: [value])
+                        guard let firstResult = markedResults.first?.1 else {
+                            return
+                        }
+                        let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
+                        let foundInBuildPhase = "Found \(highlightedCode) in \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase."
+                        requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
                     }
                 })
                 spinner.success()
@@ -383,7 +436,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
     }
 
     func parseFiles(filePathsForParsing: [Path],
-                    requiredAPIs: inout [String: Set<PresentedResult>],
+                    requiredAPIs: inout [RequiredReasonKey: Set<PresentedResult>],
                     targetName: String,
                     spinner: Spinner) throws {
         var fileCount = 1
@@ -396,35 +449,38 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 continue
             }
 
-            APIS_TO_CHECK.forEach { (key, value) in
-                Self.lookForAPI(listOfAPIs: value,
-                                contents: contents).forEach { parsedResult in
-                    let highlightedCode = "\(Self.addBracketsToString(parsedResult.line,around: parsedResult.range))"
-                    let formattedLine = "\(CliSyntaxColor.GREEN)\(parsedResult.lineNumber):\(CliSyntaxColor.END)\t\(highlightedCode)"
-                    requiredAPIs[key]?.update(with: PresentedResult(filePath: filePath.string,
-                                                                    formattedLine: formattedLine,
-                                                                    parsedResult: parsedResult))
+            Self.lookForAPI(contents: contents).forEach { (key, parsedResult) in
+                let highlightedCode = "\(Self.addBracketsToString(parsedResult.line,around: parsedResult.range))"
+                var formattedLine = ""
+                if let lineNumber = parsedResult.lineNumber {
+                    formattedLine = "\(CliSyntaxColor.GREEN)\(lineNumber):\(CliSyntaxColor.END)\t\(highlightedCode)"
                 }
+                else {
+                    formattedLine = "\(highlightedCode)"
+                }
+                requiredAPIs[key]?.update(with: PresentedResult(filePath: filePath.string,
+                                                                formattedLine: formattedLine,
+                                                                parsedResult: parsedResult))
             }
+
             spinner.message("Parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files (\(fileCount)/\(filePathsForParsing.count))...")
             fileCount += 1
         }
     }
 
-    func process(requiredAPIs: [String: Set<PresentedResult>]) {
+    func process(requiredAPIs: [RequiredReasonKey: Set<PresentedResult>]) {
         print("---")
         requiredAPIs.sorted(by: {
             if $0.value.count == $1.value.count {
-                $0.key < $1.key
+                $0.key.hashValue < $1.key.hashValue
             }
             else {
                 $0.value.count < $1.value.count
             }
         }).forEach { (key, list) in
-            print("\(CliSyntaxColor.WHITE_BOLD)\(key) (\(list.count) \(list.count == 1 ? "occurrence" : "occurrences")\(CliSyntaxColor.END))")
-            if list.count > 0,
-               let link = LINKS_TO_APIS[key] {
-                print("\(CliSyntaxColor.CYAN)⚓︎ \(link)\(CliSyntaxColor.END)")
+            print("\(CliSyntaxColor.WHITE_BOLD)\(key.description) (\(list.count) \(list.count == 1 ? "occurrence" : "occurrences")\(CliSyntaxColor.END))")
+            if list.count > 0 {
+                print("\(CliSyntaxColor.CYAN)⚓︎ \(key.link)\(CliSyntaxColor.END)")
             }
 
             if !revealOccurrences {
@@ -440,7 +496,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 else if let firstParsedResult = $0.parsedResult,
                          let secondParentResult = $1.parsedResult {
                     if $0.filePath == $1.filePath {
-                        return firstParsedResult.lineNumber < secondParentResult.lineNumber
+                        return firstParsedResult.lineNumber ?? -1 < secondParentResult.lineNumber ?? -1
                     }
                     else {
                         return $0.filePath < $1.filePath
@@ -463,26 +519,40 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
         }
     }
 
-    static func lookForAPI(listOfAPIs: [String],
-                           contents: String) -> [ParsedResult] {
-        var foundAPIs: [ParsedResult] = []
-        listOfAPIs.forEach { api in
-            var lineNumber = 1
-            contents.components(separatedBy: .newlines).forEach { line in
-                var searchRange = line.startIndex..<line.endIndex
-                while let range = line.range(of: api,
-                                             options: [],
-                                             range: searchRange) {
-                    foundAPIs.append(ParsedResult(line: line,
-                                                  lineNumber: lineNumber,
-                                                  range: range,
-                                                  api: api))
-                    searchRange = range.upperBound..<line.endIndex
-                }
-                lineNumber += 1
+    static func lookForAPI(contents: String) -> [(RequiredReasonKey, ParsedResult)] {
+        var foundAPIs: [(RequiredReasonKey, ParsedResult)] = []
+        var lineNumber = 1
+        contents.components(separatedBy: .newlines).forEach { line in
+            APIS_TO_CHECK.forEach { (api, requiredReasonKeys) in
+                let results = mark(searchString: api,
+                                   in: line,
+                                   lineNumber: lineNumber,
+                                   requiredReasonKeys: requiredReasonKeys)
+                foundAPIs.append(contentsOf: results)
             }
+            lineNumber += 1
         }
         return foundAPIs
+    }
+
+    static func mark(searchString: String, 
+                     in line: String,
+                     lineNumber: Int?,
+                     caseInsensitive: Bool = false,
+                     requiredReasonKeys: [RequiredReasonKey]) -> [(RequiredReasonKey, ParsedResult)] {
+        var parsedResults: [(RequiredReasonKey, ParsedResult)] = []
+        var searchRange = line.startIndex..<line.endIndex
+        while let range = line.range(of: searchString,
+                                     options: caseInsensitive ? .caseInsensitive : [],
+                                     range: searchRange) {
+            requiredReasonKeys.forEach { requiredReasonKey in
+                parsedResults.append((requiredReasonKey, ParsedResult(line: line,
+                                                                      lineNumber: lineNumber,
+                                                                      range: range)))
+            }
+            searchRange = range.upperBound..<line.endIndex
+        }
+        return parsedResults
     }
 
     static func addTagsToString(_ string: String,

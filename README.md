@@ -9,9 +9,10 @@ Swift Package and attempts to locate calls to Apple's required reason APIs [^1]
 or privacy collected data frameworks [^2].
 
 The tool detects and parses the source files of the project as well as the
-frameworks added in the Xcode project's Build Phase. It does not perform any
-sort of analysis beyond the simple line-by-line check for the existence of the
-method calls or symbols that Apple has already published.
+frameworks added in the Xcode project's Build Phase or in the Swift Package
+dependencies. It does not perform any sort of analysis beyond the simple
+line-by-line check for the existence of the method calls or symbols that
+Apple has already published.
 
 ## Installation
 

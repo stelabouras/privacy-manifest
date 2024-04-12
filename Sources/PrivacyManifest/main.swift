@@ -399,6 +399,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
     }
 
     func parseSwiftPackage(projectPath: Path) throws {
+        let lock = NSLock()
         var requiredAPIs: [RequiredReasonKey: Set<PresentedResult>] = [:]
         RequiredReasonKey.allCases.forEach { key in
             requiredAPIs[key] = Set()
@@ -458,7 +459,9 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                     }
                     let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
                     let foundInBuildPhase = "Found \(highlightedCode) in dependencies."
+                    lock.lock()
                     requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
+                    lock.unlock()
                 }
                 concurrentStream.success(spinner: spinner,
                                          "Parsed \(dependencyString) dependency")
@@ -495,7 +498,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                                        requiredAPIs: &requiredAPIs,
                                        targetName: target.name,
                                        spinner: spinner,
-                                       concurrentStream: concurrentStream)
+                                       concurrentStream: concurrentStream,
+                                       lock: lock)
                         concurrentStream.success(spinner: spinner,
                                                  "Parsed \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
                     }
@@ -514,6 +518,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
     }
 
     func parseXcodeProject(projectPath: Path) throws {
+        let lock = NSLock()
         var requiredAPIs: [RequiredReasonKey: Set<PresentedResult>] = [:]
         RequiredReasonKey.allCases.forEach { key in
             requiredAPIs[key] = Set()
@@ -565,7 +570,9 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                             }
                             let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
                             let foundInBuildPhase = "Found \(highlightedCode) in \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase."
+                            lock.lock()
                             requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
+                            lock.unlock()
                         }
                     })
                     concurrentStream.success(spinner: spinner,
@@ -598,7 +605,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                                    requiredAPIs: &requiredAPIs,
                                    targetName: target.name,
                                    spinner: spinner,
-                                   concurrentStream: concurrentStream)
+                                   concurrentStream: concurrentStream,
+                                   lock: lock)
                     concurrentStream.success(spinner: spinner,
                                              "Parsed \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
                 }
@@ -619,7 +627,8 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                     requiredAPIs: inout [RequiredReasonKey: Set<PresentedResult>],
                     targetName: String,
                     spinner: Spinner,
-                    concurrentStream: ConcurrentSpinnerStream) throws {
+                    concurrentStream: ConcurrentSpinnerStream,
+                    lock: NSLock) throws {
         var fileCount = 1
         for filePath in filePathsForParsing {
             guard let fileHandle = FileHandle(forReadingAtPath: filePath.string) else {
@@ -639,9 +648,11 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 else {
                     formattedLine = "\(highlightedCode)"
                 }
+                lock.lock()
                 requiredAPIs[key]?.update(with: PresentedResult(filePath: filePath.string,
                                                                 formattedLine: formattedLine,
                                                                 parsedResult: parsedResult))
+                lock.unlock()
             }
 
             concurrentStream.message(spinner: spinner,

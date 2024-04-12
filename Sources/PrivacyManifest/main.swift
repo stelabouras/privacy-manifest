@@ -292,7 +292,7 @@ order to find whether your codebase makes use of Apple's required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.2",
+        version: "0.0.3",
         subcommands: [Analyze.self])
 }
 
@@ -389,14 +389,14 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 return
             }
 
+            let dependencyString = dependency.canonicalLocation.description
+            let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+            let spinner = Spinner(.dots8Bit,
+                                  "Parsing \(dependencyString) dependency...",
+                                  stream: silentStream)
+            spinner.start()
             queue.async(group: group,
                         execute: DispatchWorkItem(block: {
-                let dependencyString = dependency.canonicalLocation.description
-                let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
-                let spinner = Spinner(.dots8Bit,
-                                      "Parsing package dependencies...",
-                                      stream: silentStream)
-                spinner.start()
                 SDKS_TO_CHECK.forEach { (key, value) in
                     let markedResults = Self.mark(searchString: key,
                                                   in: dependencyString,
@@ -423,6 +423,11 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                     return
                 }
 
+                let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+                let spinner = Spinner(.dots8Bit,
+                                      "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
+                                      stream: silentStream)
+                spinner.start()
                 queue.async(group: group,
                             execute: DispatchWorkItem(block: {
                     var filePathsForParsing: [Path] = []
@@ -434,11 +439,6 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                         }
                         filePathsForParsing.append(Path(rootDirectory.pathString) + relativePath.pathString)
                     }
-                    let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
-                    let spinner = Spinner(.dots8Bit,
-                                          "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
-                                          stream: silentStream)
-                    spinner.start()
                     do {
                         try parseFiles(filePathsForParsing: filePathsForParsing,
                                        requiredAPIs: &requiredAPIs,
@@ -490,13 +490,13 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 guard phase.buildPhase == .frameworks else {
                     return
                 }
+                let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+                let spinner = Spinner(.dots8Bit,
+                                      "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase...",
+                                      stream: silentStream)
+                spinner.start()
                 queue.async(group: group,
                             execute: DispatchWorkItem(block: {
-                    let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
-                    let spinner = Spinner(.dots8Bit,
-                                          "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase...",
-                                          stream: silentStream)
-                    spinner.start()
                     phase.files?.forEach({ file in
                         guard let fullFileName = file.file?.name else {
                             return
@@ -519,13 +519,13 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 }))
             }
 
+            let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+            let spinner = Spinner(.dots8Bit,
+                                  "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
+                                  stream: silentStream)
+            spinner.start()
             queue.async(group: group,
                         execute: DispatchWorkItem(block: {
-                let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
-                let spinner = Spinner(.dots8Bit,
-                                      "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
-                                      stream: silentStream)
-                spinner.start()
                 do {
                     var filePathsForParsing: [Path] = []
                     try target.sourceFiles().forEach { file in

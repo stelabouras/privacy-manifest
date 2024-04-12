@@ -24,6 +24,81 @@ import func TSCBasic.tsc_await
 import PathKit
 import XcodeProj
 
+// Display several different spinner outputs concurrently
+class ConcurrentSpinnerStream {
+    // The array of concurrent silent spinner streams to manage
+    var silentSpinners: [SilentSpinnerStream] = []
+
+    private let printLock = NSLock()
+    private var previousRows = 0
+
+    // Renders the added silent spinner streams
+    func render() {
+        printLock.lock()
+        defer { printLock.unlock() }
+        guard silentSpinners.count > 0 else {
+            return
+        }
+        // Move cursor at the beginning of the previously rendered string
+        if previousRows > 0 {
+            print("\u{001B}[\(previousRows)F", terminator: "")
+        }
+        // Clear from cursor to end of screen
+        print("\u{001B}[0J", terminator: "")
+        // Generate the buffer
+        var buffer = ""
+        silentSpinners.forEach { silentSpinner in
+            buffer.append(silentSpinner.buffer + "\n")
+        }
+        print("\(buffer)", terminator: "")
+        fflush(stdout)
+        previousRows = silentSpinners.count
+    }
+
+    // Hides the cursor from console
+    func hideCursor() {
+        previousRows = 0
+        print("\u{001B}[?25l", terminator: "")
+        fflush(stdout)
+    }
+
+    /// Shows the cursor to console
+    func showCursor() {
+        print("\u{001B}[?25h", terminator: "")
+        fflush(stdout)
+    }
+
+    // Adds a silent spinner stream
+    func add(stream: SilentSpinnerStream) {
+        printLock.lock()
+        silentSpinners.append(stream)
+        printLock.unlock()
+    }
+}
+
+// Writes the spinner stream to a buffer, instead of the stdout
+class SilentSpinnerStream: SpinnerStream {
+    var buffer = ""
+    var concurrentStream: ConcurrentSpinnerStream
+
+    init(concurrentStream: ConcurrentSpinnerStream) {
+        self.concurrentStream = concurrentStream
+        concurrentStream.add(stream: self)
+    }
+
+    func write(string: String, terminator: String) {
+        if string.count == 0 {
+            return
+        }
+        buffer = string
+        concurrentStream.render()
+    }
+
+    func hideCursor() { }
+
+    func showCursor() { }
+}
+
 enum RequiredReasonKey: CaseIterable {
     case FILE_TIMESTAMP_APIS_KEY
     case SYSTEM_BOOT_APIS_KEY
@@ -217,7 +292,7 @@ order to find whether your codebase makes use of Apple's required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.1",
+        version: "0.0.2",
         subcommands: [Analyze.self])
 }
 
@@ -303,55 +378,83 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
         )
         spinner.success()
 
+        let concurrentStream = ConcurrentSpinnerStream()
+        concurrentStream.hideCursor()
+        let group = DispatchGroup()
+        let queue = DispatchQueue(label: "parser",
+                                  attributes: .concurrent)
+
         graph.requiredDependencies.forEach { dependency in
             guard !dependency.kind.isRoot else {
                 return
             }
 
-            let dependencyString = dependency.canonicalLocation.description
-
-            SDKS_TO_CHECK.forEach { (key, value) in
-                let markedResults = Self.mark(searchString: key,
-                                              in: dependencyString,
-                                              lineNumber: nil,
-                                              caseInsensitive: true,
-                                              requiredReasonKeys: [value])
-                guard let firstResult = markedResults.first?.1 else {
-                    return
+            queue.async(group: group,
+                        execute: DispatchWorkItem(block: {
+                let dependencyString = dependency.canonicalLocation.description
+                let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+                let spinner = Spinner(.dots8Bit,
+                                      "Parsing package dependencies...",
+                                      stream: silentStream)
+                spinner.start()
+                SDKS_TO_CHECK.forEach { (key, value) in
+                    let markedResults = Self.mark(searchString: key,
+                                                  in: dependencyString,
+                                                  lineNumber: nil,
+                                                  caseInsensitive: true,
+                                                  requiredReasonKeys: [value])
+                    guard let firstResult = markedResults.first?.1 else {
+                        return
+                    }
+                    let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
+                    let foundInBuildPhase = "Found \(highlightedCode) in dependencies."
+                    requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
                 }
-                let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
-                let foundInBuildPhase = "Found \(highlightedCode) in dependencies."
-                requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
-            }
+                spinner.success()
+            }))
         }
 
         // We only care about the targets of the root packages, not the
         // dependencies
-        try graph.rootPackages.forEach { package in
-            try package.targets.forEach { target in
+        graph.rootPackages.forEach { package in
+            package.targets.forEach { target in
                 // Exclude test targets
                 guard target.type != .test else {
                     return
                 }
-                var filePathsForParsing: [Path] = []
-                let rootDirectory = target.sources.root
-                target.sources.relativePaths.forEach { relativePath in
-                    guard let ext = relativePath.extension,
-                          ALLOWED_EXTENSIONS.contains(ext) else {
-                        return
+
+                queue.async(group: group,
+                            execute: DispatchWorkItem(block: {
+                    var filePathsForParsing: [Path] = []
+                    let rootDirectory = target.sources.root
+                    target.sources.relativePaths.forEach { relativePath in
+                        guard let ext = relativePath.extension,
+                              ALLOWED_EXTENSIONS.contains(ext) else {
+                            return
+                        }
+                        filePathsForParsing.append(Path(rootDirectory.pathString) + relativePath.pathString)
                     }
-                    filePathsForParsing.append(Path(rootDirectory.pathString) + relativePath.pathString)
-                }
-                let spinner = Spinner(.dots8Bit,
-                                      "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...")
-                spinner.start()
-                try parseFiles(filePathsForParsing: filePathsForParsing,
-                               requiredAPIs: &requiredAPIs,
-                               targetName: target.name,
-                               spinner: spinner)
-                spinner.success()
+                    let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+                    let spinner = Spinner(.dots8Bit,
+                                          "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
+                                          stream: silentStream)
+                    spinner.start()
+                    do {
+                        try parseFiles(filePathsForParsing: filePathsForParsing,
+                                       requiredAPIs: &requiredAPIs,
+                                       targetName: target.name,
+                                       spinner: spinner)
+                        spinner.success()
+                    }
+                    catch {
+                        spinner.error()
+                    }
+                }))
             }
         }
+
+        _ = group.wait(timeout: .distantFuture)
+        concurrentStream.showCursor()
 
         process(requiredAPIs: requiredAPIs)
     }
@@ -366,7 +469,13 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
 
         print("---")
 
-        try xcodeproj.pbxproj.nativeTargets.forEach { target in
+        let concurrentStream = ConcurrentSpinnerStream()
+        concurrentStream.hideCursor()
+        let group = DispatchGroup()
+        let queue = DispatchQueue(label: "parser",
+                                  attributes: .concurrent)
+
+        xcodeproj.pbxproj.nativeTargets.forEach { target in
             guard let productType = target.productType else {
                 return
             }
@@ -381,56 +490,70 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 guard phase.buildPhase == .frameworks else {
                     return
                 }
-                let spinner = Spinner(.dots8Bit,
-                                      "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase...")
-                spinner.start()
-                phase.files?.forEach({ file in
-                    guard let fullFileName = file.file?.name else {
-                        return
-                    }
-
-                    SDKS_TO_CHECK.forEach { (key, value) in
-                        let markedResults = Self.mark(searchString: key,
-                                                      in: fullFileName,
-                                                      lineNumber: nil,
-                                                      caseInsensitive: true,
-                                                      requiredReasonKeys: [value])
-                        guard let firstResult = markedResults.first?.1 else {
+                queue.async(group: group,
+                            execute: DispatchWorkItem(block: {
+                    let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+                    let spinner = Spinner(.dots8Bit,
+                                          "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase...",
+                                          stream: silentStream)
+                    spinner.start()
+                    phase.files?.forEach({ file in
+                        guard let fullFileName = file.file?.name else {
                             return
                         }
-                        let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
-                        let foundInBuildPhase = "Found \(highlightedCode) in \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase."
-                        requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
+                        SDKS_TO_CHECK.forEach { (key, value) in
+                            let markedResults = Self.mark(searchString: key,
+                                                          in: fullFileName,
+                                                          lineNumber: nil,
+                                                          caseInsensitive: true,
+                                                          requiredReasonKeys: [value])
+                            guard let firstResult = markedResults.first?.1 else {
+                                return
+                            }
+                            let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
+                            let foundInBuildPhase = "Found \(highlightedCode) in \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase."
+                            requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
+                        }
+                    })
+                    spinner.success()
+                }))
+            }
+
+            queue.async(group: group,
+                        execute: DispatchWorkItem(block: {
+                let silentStream = SilentSpinnerStream(concurrentStream: concurrentStream)
+                let spinner = Spinner(.dots8Bit,
+                                      "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...",
+                                      stream: silentStream)
+                spinner.start()
+                do {
+                    var filePathsForParsing: [Path] = []
+                    try target.sourceFiles().forEach { file in
+                        guard let path = file.path,
+                              let ext = Path(path).extension,
+                              ALLOWED_EXTENSIONS.contains(ext)
+                        else {
+                            return
+                        }
+                        guard let fullPath = try file.fullPath(sourceRoot: projectPath.parent()) else {
+                            return
+                        }
+                        filePathsForParsing.append(fullPath)
                     }
-                })
-                spinner.success()
-            }
-
-            var filePathsForParsing: [Path] = []
-            try target.sourceFiles().forEach { file in
-                guard let path = file.path,
-                      let ext = Path(path).extension,
-                      ALLOWED_EXTENSIONS.contains(ext)
-                else {
-                    return
+                    try parseFiles(filePathsForParsing: filePathsForParsing,
+                                   requiredAPIs: &requiredAPIs,
+                                   targetName: target.name,
+                                   spinner: spinner)
+                    spinner.success()
                 }
-
-                guard let fullPath = try file.fullPath(sourceRoot: projectPath.parent()) else {
-                    return
+                catch {
+                    spinner.error()
                 }
-
-                filePathsForParsing.append(fullPath)
-            }
-
-            let spinner = Spinner(.dots8Bit,
-                                  "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...")
-            spinner.start()
-            try parseFiles(filePathsForParsing: filePathsForParsing,
-                           requiredAPIs: &requiredAPIs,
-                           targetName: target.name,
-                           spinner: spinner)
-            spinner.success()
+            }))
         }
+
+        _ = group.wait(timeout: .distantFuture)
+        concurrentStream.showCursor()
 
         process(requiredAPIs: requiredAPIs)
     }
@@ -505,7 +628,7 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
                 return $0.filePath < $1.filePath
             }).forEach { presentedResult in
                 if presentedResult.filePath != currentPath {
-                    print("\n\t\(presentedResult.formattedLine != nil ? "✎ " : "⛺︎")\(presentedResult.filePath)\(presentedResult.formattedLine != nil ? ":" : "")")
+                    print("\n\t\(presentedResult.formattedLine != nil ? "✎" : "⛺︎") \(presentedResult.filePath)\(presentedResult.formattedLine != nil ? ":" : "")")
                 }
 
                 if let formattedLine = presentedResult.formattedLine {

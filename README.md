@@ -63,7 +63,7 @@ frameworks so that it can inform the user when such framework is detected
 Do not use this tool alone to create your privacy manifest file for your app or
 SDK. You must always double-check the occurrences that the tool displays as the
 tool does not know whether a certain occurrence is included in a comment or on
-an used piece of code. Furthermore, there might also be cases where something
+an unused piece of code. Furthermore, there might also be cases where something
 has not been included in the parsing process.
 
 This tool gives you a high-level overview of the different required reason APIs

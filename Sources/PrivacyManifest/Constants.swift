@@ -1,6 +1,6 @@
 //
 //  Constants.swift
-//  
+//
 //
 //  Created by Stelios Petrakis on 14/4/24.
 //
@@ -34,6 +34,7 @@ enum RequiredReasonKey: CaseIterable {
     case HEALTHKIT_FRAMEWORK_KEY
     case CRASH_FRAMEWORK_KEY
     case CONTACTS_FRAMEWORK_KEY
+    case THIRD_PARTY_SDK_KEY
     
     var description: String {
         switch self {
@@ -55,6 +56,8 @@ enum RequiredReasonKey: CaseIterable {
             return "Crash data"
         case .CONTACTS_FRAMEWORK_KEY:
             return "Contacts"
+        case .THIRD_PARTY_SDK_KEY:
+            return "Third-party SDKs"
         }
     }
 
@@ -78,6 +81,8 @@ enum RequiredReasonKey: CaseIterable {
             return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263159"
         case .CONTACTS_FRAMEWORK_KEY:
             return "https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests#4263130"
+        case .THIRD_PARTY_SDK_KEY:
+            return "https://developer.apple.com/support/third-party-SDK-requirements/"
         }
     }
 }
@@ -132,6 +137,13 @@ let APIS_TO_CHECK: [String: [RequiredReasonKey]] = [
 
     "import Sentry": [.CRASH_FRAMEWORK_KEY],
     "#import <Sentry/Sentry.h>": [.CRASH_FRAMEWORK_KEY],
+    "import Instabug": [.CRASH_FRAMEWORK_KEY],
+    "#import <Instabug/Instabug.h>": [.CRASH_FRAMEWORK_KEY],
+    "#import \"Countly.h\"": [.CRASH_FRAMEWORK_KEY],
+    "import Bugsnag": [.CRASH_FRAMEWORK_KEY],
+    "#import <Bugsnag/Bugsnag.h>": [.CRASH_FRAMEWORK_KEY],
+    "#import <Firebase": [.CRASH_FRAMEWORK_KEY],
+    "import Firebase": [.CRASH_FRAMEWORK_KEY],
     // TODO: Add more third-party crash frameworks here
 
     "import Contacts": [.CONTACTS_FRAMEWORK_KEY],
@@ -146,7 +158,102 @@ let SDKS_TO_CHECK: [String: RequiredReasonKey] = [
 
     "sentry-cocoa": .CRASH_FRAMEWORK_KEY,
     "Sentry": .CRASH_FRAMEWORK_KEY,
+    "Instabug": .CRASH_FRAMEWORK_KEY,
+    "countly": .CRASH_FRAMEWORK_KEY,
+    "Bugsnag": .CRASH_FRAMEWORK_KEY,
+    "firebase": .CRASH_FRAMEWORK_KEY,
+    // TODO: Add more third-party crash frameworks here
+
     "CoreLocation": .CORELOCATION_FRAMEWORK_KEY,
     "HealthKit": .HEALTHKIT_FRAMEWORK_KEY,
     "Contacts": .CONTACTS_FRAMEWORK_KEY, // also covers ContactsUI
+
+    // Ref: https://developer.apple.com/support/third-party-SDK-requirements/
+    "Abseil": .THIRD_PARTY_SDK_KEY,
+    "AFNetworking": .THIRD_PARTY_SDK_KEY,
+    "Alamofire": .THIRD_PARTY_SDK_KEY,
+    "AppAuth": .THIRD_PARTY_SDK_KEY,
+    "BoringSSL": .THIRD_PARTY_SDK_KEY,
+    "openssl_grpc": .THIRD_PARTY_SDK_KEY,
+    "Capacitor": .THIRD_PARTY_SDK_KEY,
+    "Charts": .THIRD_PARTY_SDK_KEY,
+    "connectivity_plus": .THIRD_PARTY_SDK_KEY,
+    "Cordova": .THIRD_PARTY_SDK_KEY,
+    "device_info_plus": .THIRD_PARTY_SDK_KEY,
+    "DKImagePickerController": .THIRD_PARTY_SDK_KEY,
+    "DKPhotoGallery": .THIRD_PARTY_SDK_KEY,
+    "FBAEMKit": .THIRD_PARTY_SDK_KEY,
+    "FBLPromises": .THIRD_PARTY_SDK_KEY,
+    "FBSDKCoreKit": .THIRD_PARTY_SDK_KEY,
+    "FBSDKCoreKit_Basics": .THIRD_PARTY_SDK_KEY,
+    "FBSDKLoginKit": .THIRD_PARTY_SDK_KEY,
+    "FBSDKShareKit": .THIRD_PARTY_SDK_KEY,
+    "file_picker": .THIRD_PARTY_SDK_KEY,
+    "FirebaseABTesting": .THIRD_PARTY_SDK_KEY,
+    "FirebaseAuth": .THIRD_PARTY_SDK_KEY,
+    "FirebaseCore": .THIRD_PARTY_SDK_KEY,
+    "FirebaseCoreDiagnostics": .THIRD_PARTY_SDK_KEY,
+    "FirebaseCoreExtension": .THIRD_PARTY_SDK_KEY,
+    "FirebaseCoreInternal": .THIRD_PARTY_SDK_KEY,
+    "FirebaseCrashlytics": .THIRD_PARTY_SDK_KEY,
+    "FirebaseDynamicLinks": .THIRD_PARTY_SDK_KEY,
+    "FirebaseFirestore": .THIRD_PARTY_SDK_KEY,
+    "FirebaseInstallations": .THIRD_PARTY_SDK_KEY,
+    "FirebaseMessaging": .THIRD_PARTY_SDK_KEY,
+    "FirebaseRemoteConfig": .THIRD_PARTY_SDK_KEY,
+    "Flutter": .THIRD_PARTY_SDK_KEY,
+    "flutter_inappwebview": .THIRD_PARTY_SDK_KEY,
+    "flutter_local_notifications": .THIRD_PARTY_SDK_KEY,
+    "fluttertoast": .THIRD_PARTY_SDK_KEY,
+    "FMDB": .THIRD_PARTY_SDK_KEY,
+    "geolocator_apple": .THIRD_PARTY_SDK_KEY,
+    "GoogleDataTransport": .THIRD_PARTY_SDK_KEY,
+    "GoogleSignIn": .THIRD_PARTY_SDK_KEY,
+    "GoogleToolboxForMac": .THIRD_PARTY_SDK_KEY,
+    "GoogleUtilities": .THIRD_PARTY_SDK_KEY,
+    "grpcpp": .THIRD_PARTY_SDK_KEY,
+    "GTMAppAuth": .THIRD_PARTY_SDK_KEY,
+    "GTMSessionFetcher": .THIRD_PARTY_SDK_KEY,
+    "hermes": .THIRD_PARTY_SDK_KEY,
+    "image_picker_ios": .THIRD_PARTY_SDK_KEY,
+    "IQKeyboardManager": .THIRD_PARTY_SDK_KEY,
+    "IQKeyboardManagerSwift": .THIRD_PARTY_SDK_KEY,
+    "Kingfisher": .THIRD_PARTY_SDK_KEY,
+    "leveldb": .THIRD_PARTY_SDK_KEY,
+    "Lottie": .THIRD_PARTY_SDK_KEY,
+    "MBProgressHUD": .THIRD_PARTY_SDK_KEY,
+    "nanopb": .THIRD_PARTY_SDK_KEY,
+    "OneSignal": .THIRD_PARTY_SDK_KEY,
+    "OneSignalCore": .THIRD_PARTY_SDK_KEY,
+    "OneSignalExtension": .THIRD_PARTY_SDK_KEY,
+    "OneSignalOutcomes": .THIRD_PARTY_SDK_KEY,
+    "OpenSSL": .THIRD_PARTY_SDK_KEY,
+    "OrderedSet": .THIRD_PARTY_SDK_KEY,
+    "package_info": .THIRD_PARTY_SDK_KEY,
+    "package_info_plus": .THIRD_PARTY_SDK_KEY,
+    "path_provider": .THIRD_PARTY_SDK_KEY,
+    "path_provider_ios": .THIRD_PARTY_SDK_KEY,
+    "Promises": .THIRD_PARTY_SDK_KEY,
+    "Protobuf": .THIRD_PARTY_SDK_KEY,
+    "Reachability": .THIRD_PARTY_SDK_KEY,
+    "RealmSwift": .THIRD_PARTY_SDK_KEY,
+    "RxCocoa": .THIRD_PARTY_SDK_KEY,
+    "RxRelay": .THIRD_PARTY_SDK_KEY,
+    "RxSwift": .THIRD_PARTY_SDK_KEY,
+    "SDWebImage": .THIRD_PARTY_SDK_KEY,
+    "share_plus": .THIRD_PARTY_SDK_KEY,
+    "shared_preferences_ios": .THIRD_PARTY_SDK_KEY,
+    "SnapKit": .THIRD_PARTY_SDK_KEY,
+    "sqflite": .THIRD_PARTY_SDK_KEY,
+    "Starscream": .THIRD_PARTY_SDK_KEY,
+    "SVProgressHUD": .THIRD_PARTY_SDK_KEY,
+    "SwiftyGif": .THIRD_PARTY_SDK_KEY,
+    "SwiftyJSON": .THIRD_PARTY_SDK_KEY,
+    "Toast": .THIRD_PARTY_SDK_KEY,
+    "UnityFramework": .THIRD_PARTY_SDK_KEY,
+    "url_launcher": .THIRD_PARTY_SDK_KEY,
+    "url_launcher_ios": .THIRD_PARTY_SDK_KEY,
+    "video_player_avfoundation": .THIRD_PARTY_SDK_KEY,
+    "wakelock": .THIRD_PARTY_SDK_KEY,
+    "webview_flutter_wkwebview": .THIRD_PARTY_SDK_KEY
 ]

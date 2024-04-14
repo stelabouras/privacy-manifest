@@ -54,10 +54,9 @@ optimizations: The tool can output the report to HTML, or attempt to generate
 an initial privacy manifest based on the user's input (maybe it can be more
 interactive).
 
-On top of that, it can also look into Apple's SDK list that require a privacy
-manifest to be present [^3] and even update the list of third-party crash
-frameworks so that it can inform the user when such framework is detected
-(there is a related TODO in the code).
+On top of that, the list of third-party crash frameworks can be updated so that
+it can inform the user when such framework is detected (there is a related TODO
+in the code).
 
 ## Disclaimer
 

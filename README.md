@@ -4,15 +4,17 @@
 <img src="https://img.shields.io/badge/macOS_v13%2B-_?style=flat&logo=apple&label=platform">
 </p>
 
-Privacy Manifest CLI tool is a simple tool that parses an Xcode project or a
-Swift Package and attempts to locate calls to Apple's required reason APIs [^1]
-or privacy collected data frameworks [^2].
+Privacy Manifest CLI tool parses an Xcode project or a Swift Package and
+attempts to locate calls to Apple's required reason APIs [^1] and detect
+privacy collected data frameworks [^2].
 
 The tool detects and parses the source files of the project as well as the
 frameworks added in the Xcode project's Build Phase or in the Swift Package
 dependencies. It does not perform any sort of analysis beyond the simple
 line-by-line check for the existence of the method calls or symbols that
 Apple has already published.
+
+The tool uses a concurrent queue to speed up the parsing process.
 
 ## Installation
 
@@ -76,4 +78,3 @@ Licensed under Apache License 2.0, see [LICENSE](LICENSE) file.
 
 [^1]: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api
 [^2]: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests).
-[^3]: https://developer.apple.com/support/third-party-SDK-requirements/

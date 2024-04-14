@@ -23,8 +23,8 @@ struct PresentedResult: Hashable {
 }
 
 class ProjectParser {
-    var requiredAPIs: [RequiredReasonKey: Set<PresentedResult>] = [:]
-    let requiredAPIsLock = NSLock()
+    private var requiredAPIs: [RequiredReasonKey: Set<PresentedResult>] = [:]
+    private let requiredAPIsLock = NSLock()
 
     let concurrentStream = ConcurrentSpinnerStream()
     let group = DispatchGroup()
@@ -73,11 +73,10 @@ class ProjectParser {
                         else {
                             formattedLine = "\(highlightedCode)"
                         }
-                        self.requiredAPIsLock.lock()
-                        self.requiredAPIs[key]?.update(with: PresentedResult(filePath: filePath.string,
-                                                                        formattedLine: formattedLine,
-                                                                        parsedResult: parsedResult))
-                        self.requiredAPIsLock.unlock()
+                        self.updateRequiredAPIs(key,
+                                                with: PresentedResult(filePath: filePath.string,
+                                                                      formattedLine: formattedLine,
+                                                                      parsedResult: parsedResult))
                     }
                 }
                 catch {
@@ -86,6 +85,13 @@ class ProjectParser {
             }))
         }
         _ = targetGroup.wait(timeout: .distantFuture)
+    }
+
+    final func updateRequiredAPIs(_ key: RequiredReasonKey,
+                                  with presentedResult: PresentedResult) {
+        self.requiredAPIsLock.lock()
+        self.requiredAPIs[key]?.update(with: presentedResult)
+        self.requiredAPIsLock.unlock()
     }
 
     final func process(revealOccurrences: Bool) {

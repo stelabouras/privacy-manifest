@@ -52,9 +52,8 @@ class XcodeProjectParser: ProjectParser {
                             }
                             let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
                             let foundInBuildPhase = "Found \(highlightedCode) in \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) Frameworks Build Phase."
-                            self.requiredAPIsLock.lock()
-                            self.requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
-                            self.requiredAPIsLock.unlock()
+                            self.updateRequiredAPIs(value,
+                                                    with: PresentedResult(filePath: foundInBuildPhase))
                         }
                     })
                     self.concurrentStream.success(spinner: spinner,

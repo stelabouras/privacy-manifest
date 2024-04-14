@@ -92,9 +92,8 @@ class SwiftPackageProjectParser : ProjectParser {
                     }
                     let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
                     let foundInBuildPhase = "Found \(highlightedCode) in dependencies."
-                    self.requiredAPIsLock.lock()
-                    self.requiredAPIs[value]?.update(with: PresentedResult(filePath: foundInBuildPhase))
-                    self.requiredAPIsLock.unlock()
+                    self.updateRequiredAPIs(value,
+                                            with: PresentedResult(filePath: foundInBuildPhase))
                 }
                 self.concurrentStream.success(spinner: spinner,
                                               "Parsed \(dependencyString) dependency")

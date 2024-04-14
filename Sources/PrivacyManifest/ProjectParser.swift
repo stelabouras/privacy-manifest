@@ -24,57 +24,68 @@ struct PresentedResult: Hashable {
 
 class ProjectParser {
     var requiredAPIs: [RequiredReasonKey: Set<PresentedResult>] = [:]
-    var requiredAPIsLock = NSLock()
-    
+    let requiredAPIsLock = NSLock()
+
     let concurrentStream = ConcurrentSpinnerStream()
     let group = DispatchGroup()
     let queue = DispatchQueue(label: "parser",
                               attributes: .concurrent)
-    
-    var projectPath: Path
-    
+
+    let projectPath: Path
+
     init(with projectPath: Path) {
         self.projectPath = projectPath
         RequiredReasonKey.allCases.forEach { key in
             requiredAPIs[key] = Set()
         }
     }
-    
+
     func parse() throws { }
 
     final func parseFiles(filePathsForParsing: [Path],
                           targetName: String,
                           spinner: Spinner) throws {
-        var fileCount = 1
+        let targetGroup = DispatchGroup()
+        var parsed = 1
         for filePath in filePathsForParsing {
-            guard let fileHandle = FileHandle(forReadingAtPath: filePath.string) else {
-                continue
-            }
-            guard let data = try fileHandle.readToEnd(),
-                  let contents = String(data: data, encoding: .utf8) else {
-                continue
-            }
-
-            Self.lookForAPI(contents: contents).forEach { (key, parsedResult) in
-                let highlightedCode = "\(Self.addBracketsToString(parsedResult.line,around: parsedResult.range))"
-                var formattedLine = ""
-                if let lineNumber = parsedResult.lineNumber {
-                    formattedLine = "\(CliSyntaxColor.GREEN)\(lineNumber):\(CliSyntaxColor.END)\t\(highlightedCode)"
+            self.queue.async(group: targetGroup,
+                             execute: DispatchWorkItem(block: {
+                defer {
+                    parsed += 1
+                    self.concurrentStream.message(spinner: spinner,
+                                             "Parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files (\(parsed)/\(filePathsForParsing.count))...")
                 }
-                else {
-                    formattedLine = "\(highlightedCode)"
+                guard let fileHandle = FileHandle(forReadingAtPath: filePath.string) else {
+                    return
                 }
-                requiredAPIsLock.lock()
-                requiredAPIs[key]?.update(with: PresentedResult(filePath: filePath.string,
-                                                                formattedLine: formattedLine,
-                                                                parsedResult: parsedResult))
-                requiredAPIsLock.unlock()
-            }
+                do {
+                    guard let data = try fileHandle.readToEnd(),
+                          let contents = String(data: data, encoding: .utf8) else {
+                        return
+                    }
 
-            concurrentStream.message(spinner: spinner,
-                                     "Parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files (\(fileCount)/\(filePathsForParsing.count))...")
-            fileCount += 1
+                    Self.lookForAPI(contents: contents).forEach { (key, parsedResult) in
+                        let highlightedCode = "\(Self.addBracketsToString(parsedResult.line,around: parsedResult.range))"
+                        var formattedLine = ""
+                        if let lineNumber = parsedResult.lineNumber {
+                            formattedLine = "\(CliSyntaxColor.GREEN)\(lineNumber):\(CliSyntaxColor.END)\t\(highlightedCode)"
+                        }
+                        else {
+                            formattedLine = "\(highlightedCode)"
+                        }
+                        self.requiredAPIsLock.lock()
+                        self.requiredAPIs[key]?.update(with: PresentedResult(filePath: filePath.string,
+                                                                        formattedLine: formattedLine,
+                                                                        parsedResult: parsedResult))
+                        self.requiredAPIsLock.unlock()
+                    }
+                }
+                catch {
+                    self.concurrentStream.error(spinner: spinner, "Error: \(error)")
+                }
+            }))
         }
+        _ = targetGroup.wait(timeout: .distantFuture)
     }
 
     final func process(revealOccurrences: Bool) {

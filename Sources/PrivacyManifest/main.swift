@@ -23,7 +23,7 @@ order to find whether your codebase makes use of Apple's required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.6",
+        version: "0.0.7",
         subcommands: [Analyze.self])
 }
 

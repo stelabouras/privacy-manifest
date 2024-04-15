@@ -44,6 +44,7 @@ extension UserToolchain {
     }
 }
 
+// Parses all the Swift Package's supported source files and dependencies.
 class SwiftPackageProjectParser : ProjectParser {
     override func parse() throws {
         let spinner = Spinner(.dots8Bit,

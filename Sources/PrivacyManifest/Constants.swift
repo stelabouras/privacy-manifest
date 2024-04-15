@@ -24,6 +24,9 @@ struct CliSyntaxColor {
     static let END = "\u{001B}[0;0m"
 }
 
+let PACKAGE_SWIFT_FILENAME = "Package.swift"
+let XCODE_PROJECT_PATH_EXTENSION = "xcodeproj"
+
 enum RequiredReasonKey: CaseIterable {
     case FILE_TIMESTAMP_APIS_KEY
     case SYSTEM_BOOT_APIS_KEY

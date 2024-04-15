@@ -22,11 +22,16 @@ order to find whether your codebase makes use of Apple's required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.9",
+        version: "0.0.10",
         subcommands: [Analyze.self])
 }
 
 struct Analyze: ParsableCommand {
+    enum DetectedProjectType {
+        case xcodeProject(Path)
+        case swiftPackage(Path)
+        case directory(Path)
+    }
 
     public static let configuration = CommandConfiguration(
         commandName: "analyze",
@@ -51,27 +56,66 @@ Either the (relative/absolute) path to the project's .xcodeproj (e.g. path/to/My
 
     func run() throws {
         let projectPath = Path(project).absolute()
-        if projectPath.url.lastPathComponent == "Package.swift" {
-            print("Swift Package detected.")
-            try measure {
-                let swiftPackage = SwiftPackageProjectParser(with: projectPath)
-                try swiftPackage.parse()
-                swiftPackage.process(revealOccurrences: revealOccurrences)
+        var detectedProjectType: DetectedProjectType?
+
+        if projectPath.lastComponent == PACKAGE_SWIFT_FILENAME {
+            detectedProjectType = .swiftPackage(projectPath)
+        }
+        else if projectPath.extension == XCODE_PROJECT_PATH_EXTENSION {
+            detectedProjectType = .xcodeProject(projectPath)
+        }
+        else if projectPath.isDirectory {
+            let children = try projectPath.children()
+            guard children.count > 0 else {
+                print("\(CliSyntaxColor.RED)Empty directory: \(projectPath)\(CliSyntaxColor.END)")
+                return
+            }
+            children.forEach { childPath in
+                if detectedProjectType != nil {
+                    return
+                }
+                if childPath.extension == XCODE_PROJECT_PATH_EXTENSION {
+                    detectedProjectType = .xcodeProject(childPath)
+                }
+                else if childPath.lastComponent == PACKAGE_SWIFT_FILENAME {
+                    detectedProjectType = .swiftPackage(childPath)
+                }
+            }
+            if detectedProjectType == nil {
+                detectedProjectType = .directory(projectPath)
             }
         }
-        else if projectPath.extension == "xcodeproj" {
-            print("Xcode project detected.")
-            try measure {
-                let xcodeProject = XcodeProjectParser(with: projectPath)
-                try xcodeProject.parse()
-                xcodeProject.process(revealOccurrences: revealOccurrences)
-            }
+
+        guard let detectedProjectType = detectedProjectType else {
+            print("\(CliSyntaxColor.RED)File type not supported: \(projectPath)\(CliSyntaxColor.END)")
+            return
         }
-        else if let ext = projectPath.extension {
-            print("Project extension not supported: \(ext)")
-        }
-        else {
-            print("Path is a directory: \(projectPath.lastComponent)")
+
+        switch detectedProjectType {
+            case .swiftPackage(let path):
+                print("Swift Package detected: \(CliSyntaxColor.WHITE_BOLD)\(path)\(CliSyntaxColor.END)")
+                try measure {
+                    let swiftPackage = SwiftPackageProjectParser(with: path)
+                    try swiftPackage.parse()
+                    swiftPackage.process(revealOccurrences: revealOccurrences)
+                }
+                break
+            case .xcodeProject(let path):
+                print("Xcode project detected: \(CliSyntaxColor.WHITE_BOLD)\(path)\(CliSyntaxColor.END)")
+                try measure {
+                    let xcodeProject = XcodeProjectParser(with: path)
+                    try xcodeProject.parse()
+                    xcodeProject.process(revealOccurrences: revealOccurrences)
+                }
+                break
+            case .directory(let path):
+                print("Directory detected: \(CliSyntaxColor.WHITE_BOLD)\(path)\(CliSyntaxColor.END)")
+                try measure {
+                    let xcodeProject = DirectoryProjectParser(with: path)
+                    try xcodeProject.parse()
+                    xcodeProject.process(revealOccurrences: revealOccurrences)
+                }
+            break
         }
     }
 

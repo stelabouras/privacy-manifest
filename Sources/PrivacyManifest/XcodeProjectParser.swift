@@ -12,6 +12,7 @@ import PathKit
 
 import XcodeProj
 
+// Parses all targets' supported source files and frameworks.
 class XcodeProjectParser: ProjectParser {
     override func parse() throws {
         let xcodeproj = try XcodeProj(path: projectPath)

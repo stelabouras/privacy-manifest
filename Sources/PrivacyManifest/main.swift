@@ -23,7 +23,7 @@ required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.13",
+        version: "0.0.14",
         subcommands: [Analyze.self])
 }
 
@@ -35,11 +35,24 @@ struct Analyze: ParsableCommand {
         struct PrivacyAccessedAPIType: Encodable {
             var nsPrivacyAccessedAPIType: String
             var nSPrivacyAccessedAPITypeReasons: [String]
+
+            enum CodingKeys: String, CodingKey {
+                case nsPrivacyAccessedAPIType = "NSPrivacyAccessedAPIType"
+                case nSPrivacyAccessedAPITypeReasons = "NSPrivacyAccessedAPITypeReasons"
+            }
         }
+
         var nsPrivacyTracking: Bool
         var nsPrivacyTrackingDomains: [String]
         var nsPrivacyCollectedDataTypes: [[String:String]]
         var nsPrivacyAccessedAPITypes: [PrivacyAccessedAPIType]
+
+        enum CodingKeys: String, CodingKey {
+            case nsPrivacyTracking = "NSPrivacyTracking"
+            case nsPrivacyTrackingDomains = "NSPrivacyTrackingDomains"
+            case nsPrivacyCollectedDataTypes = "NSPrivacyCollectedDataTypes"
+            case nsPrivacyAccessedAPITypes = "NSPrivacyAccessedAPITypes"
+        }
     }
 
     enum DetectedProjectType {

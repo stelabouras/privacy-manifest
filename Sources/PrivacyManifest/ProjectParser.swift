@@ -45,6 +45,9 @@ class ProjectParser {
     final func parseFiles(filePathsForParsing: [Path],
                           targetName: String,
                           spinner: Spinner) throws {
+        guard filePathsForParsing.count > 0 else {
+            return
+        }
         let targetGroup = DispatchGroup()
         var parsed = 1
         for filePath in filePathsForParsing {
@@ -94,7 +97,7 @@ class ProjectParser {
         self.requiredAPIsLock.unlock()
     }
 
-    final func process(revealOccurrences: Bool) {
+    final func process(revealOccurrences: Bool) -> [RequiredReasonKey: Set<PresentedResult>] {
         print("---")
         requiredAPIs.sorted(by: {
             if $0.value.count == $1.value.count {
@@ -105,9 +108,6 @@ class ProjectParser {
             }
         }).forEach { (key, list) in
             print("\(CliSyntaxColor.WHITE_BOLD)\(key.description) (\(list.count) \(list.count == 1 ? "occurrence" : "occurrences")\(CliSyntaxColor.END))")
-            if list.count > 0 {
-                print("\(CliSyntaxColor.CYAN)⚓︎ \(key.link)\(CliSyntaxColor.END)")
-            }
 
             if !revealOccurrences {
                 return
@@ -143,6 +143,8 @@ class ProjectParser {
 
             print("\n")
         }
+
+        return requiredAPIs
     }
 }
 

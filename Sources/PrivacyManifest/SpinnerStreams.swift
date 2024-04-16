@@ -9,56 +9,84 @@ import Foundation
 
 import Spinner
 
-// Display several different spinner outputs concurrently
+// Displays several different spinner outputs at once
 class ConcurrentSpinnerStream {
     // The array of concurrent silent spinner streams to manage
-    var silentSpinners: [SilentSpinnerStream] = []
+    var silentSpinnerStreams: [SilentSpinnerStream] = []
+
+    private static let MAX_OUTPUT_LINES = 10
 
     private var previousRows = 0
-    private let queue = DispatchQueue(label: "concurrent.spinner.stream")
+
+    // Serial queue that ensures that console output is serial.
+    private let queue = DispatchQueue(label: "stream.queue")
     private let group = DispatchGroup()
 
+    // Serial queue that ensures that there are no race conditions on spinner
+    // calls.
+    private let spinnersQueue = DispatchQueue(label: "spinner.queue")
+    private let spinnersGroup = DispatchGroup()
+
     init() {
-        // Hides the cursor from console
-        print("\u{001B}[?25l", terminator: "")
-        fflush(stdout)
+        hideCursor()
     }
 
     // Renders the added silent spinner streams
     // NOTE: Only call it from within the serial qeueue
     private func render() {
-        guard silentSpinners.count > 0 else {
+        guard silentSpinnerStreams.count > 0 else {
             return
         }
+
         // Move cursor at the beginning of the previously rendered string
         if previousRows > 0 {
             print("\u{001B}[\(previousRows)F", terminator: "")
         }
         // Clear from cursor to end of screen
         print("\u{001B}[0J", terminator: "")
+
         // Generate the buffer
         var buffer = ""
-        silentSpinners.forEach { silentSpinner in
+        var linesRendered = 0
+
+        silentSpinnerStreams.sorted().forEach { silentSpinner in
+            if linesRendered > Self.MAX_OUTPUT_LINES {
+                return
+            }
             buffer.append(silentSpinner.buffer + "\n")
+            linesRendered += 1
         }
+
         print("\(buffer)", terminator: "")
         fflush(stdout)
-        previousRows = silentSpinners.count
+
+        previousRows = linesRendered
     }
 
+    func hideCursor() {
+        // Hides the cursor from console
+        print("\u{001B}[?25l", terminator: "")
+        fflush(stdout)
+    }
+    
     func waitAndShowCursor() {
         // Wait until all async requests have been printed
+        _ = spinnersGroup.wait(timeout: .distantFuture)
         _ = group.wait(timeout: .distantFuture)
+
         // Shows the cursor to console
         print("\u{001B}[?25h", terminator: "")
         fflush(stdout)
+
+        silentSpinnerStreams.removeAll()
+        previousRows = 0
     }
 
     // Adds a silent spinner stream
     func add(stream: SilentSpinnerStream) {
         queue.async(group: group,
                     execute: DispatchWorkItem(block: {
-            self.silentSpinners.append(stream)
+            self.silentSpinnerStreams.append(stream)
         }))
     }
 
@@ -67,39 +95,41 @@ class ConcurrentSpinnerStream {
     ///
     /// - Parameters:
     ///   - work: The task to be completed asynchronously within the serial queue
-    ///   - render: Whether after the asynchronous execution of the task, the added silent spinner
-    ///   streams should be rendered or not.
-    fileprivate func executeAsync(work: @escaping () -> Void,
-                      render: Bool = false) {
+    private func executeSpinnerAsync(work: @escaping () -> Void) {
+        spinnersQueue.async(group: spinnersGroup,
+                            execute: DispatchWorkItem(block: {
+            work()
+        }))
+    }
+
+    fileprivate func executeSpinnerStreamAsync(work: @escaping () -> Void) {
         queue.async(group: group,
                     execute: DispatchWorkItem(block: {
             work()
-            if render {
-                self.render()
-            }
+            self.render()
         }))
     }
 
     func start(spinner: Spinner) {
-        executeAsync {
+        executeSpinnerAsync {
             spinner.start()
         }
     }
 
     func success(spinner: Spinner, _ message: String) {
-        executeAsync {
+        executeSpinnerAsync {
             spinner.success(message)
         }
     }
 
     func message(spinner: Spinner, _ message: String) {
-        executeAsync {
+        executeSpinnerAsync {
             spinner.message(message)
         }
     }
 
     func error(spinner: Spinner, _ message: String) {
-        executeAsync {
+        executeSpinnerAsync {
             spinner.error(message)
         }
     }
@@ -112,12 +142,22 @@ class ConcurrentSpinnerStream {
 }
 
 // Writes the spinner stream to a buffer, instead of the stdout
-class SilentSpinnerStream: SpinnerStream {
+class SilentSpinnerStream: SpinnerStream, Comparable {
+    static func == (lhs: SilentSpinnerStream, rhs: SilentSpinnerStream) -> Bool {
+        lhs.lastUpdated == rhs.lastUpdated
+    }
+    
+    static func < (lhs: SilentSpinnerStream, rhs: SilentSpinnerStream) -> Bool {
+        lhs.lastUpdated > rhs.lastUpdated
+    }
+    
     var buffer = ""
+    var lastUpdated: TimeInterval
 
     private var concurrentStream: ConcurrentSpinnerStream
 
     init(concurrentStream: ConcurrentSpinnerStream) {
+        self.lastUpdated = Date().timeIntervalSince1970
         self.concurrentStream = concurrentStream
         concurrentStream.add(stream: self)
     }
@@ -126,14 +166,15 @@ class SilentSpinnerStream: SpinnerStream {
         guard string.count > 0 else {
             return
         }
-        concurrentStream.executeAsync(work: {
+        concurrentStream.executeSpinnerStreamAsync(work: {
+            self.lastUpdated = Date().timeIntervalSince1970
             // If the message contains a success or an error character, treat
             // it as the final message for that spinner stream.
             guard !self.buffer.contains("✔") && !self.buffer.contains("✖") else {
                 return
             }
             self.buffer = string
-        }, render: true)
+        })
     }
 
     func hideCursor() { }

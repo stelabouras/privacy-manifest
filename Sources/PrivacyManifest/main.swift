@@ -23,7 +23,7 @@ required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.11",
+        version: "0.0.12",
         subcommands: [Analyze.self])
 }
 
@@ -129,28 +129,48 @@ The path to the directory where the privacy manifest file will be generated (Opt
             print("Swift Package detected: \(CliSyntaxColor.WHITE_BOLD)\(path)\(CliSyntaxColor.END)")
             let swiftPackage = SwiftPackageProjectParser(with: path)
             try measure {
-                try swiftPackage.parse()
+                do {
+                    try swiftPackage.parse()
+                }
+                catch {
+                    print("\(CliSyntaxColor.RED)Swift Package Parser Error: \(error)\(CliSyntaxColor.END)")
+                }
             }
             requiredAPIs = swiftPackage.process(revealOccurrences: revealOccurrences)
         case .xcodeProject(let path):
             print("Xcode project detected: \(CliSyntaxColor.WHITE_BOLD)\(path)\(CliSyntaxColor.END)")
             let xcodeProject = XcodeProjectParser(with: path)
             try measure {
-                try xcodeProject.parse()
+                do {
+                    try xcodeProject.parse()
+                }
+                catch {
+                    print("\(CliSyntaxColor.RED)Xcode Project Parser Error: \(error)\(CliSyntaxColor.END)")
+                }
             }
             requiredAPIs = xcodeProject.process(revealOccurrences: revealOccurrences)
         case .xcodeWorkspace(let path):
             print("Xcode workspace detected: \(CliSyntaxColor.WHITE_BOLD)\(path)\(CliSyntaxColor.END)")
             let xcodeWorkspace = XcodeWorkspaceParser(with: path)
             try measure {
-                try xcodeWorkspace.parse()
+                do {
+                    try xcodeWorkspace.parse()
+                }
+                catch {
+                    print("\(CliSyntaxColor.RED)Xcode Workspace Parser Error: \(error)\(CliSyntaxColor.END)")
+                }
             }
             requiredAPIs = xcodeWorkspace.process(revealOccurrences: revealOccurrences)
         case .directory(let path):
             print("Directory detected: \(CliSyntaxColor.WHITE_BOLD)\(path)\(CliSyntaxColor.END)")
             let xcodeProject = DirectoryProjectParser(with: path)
             try measure {
-                try xcodeProject.parse()
+                do {
+                    try xcodeProject.parse()
+                }
+                catch {
+                    print("\(CliSyntaxColor.RED)Directory Parser Error: \(error)\(CliSyntaxColor.END)")
+                }
             }
             requiredAPIs = xcodeProject.process(revealOccurrences: revealOccurrences)
         }

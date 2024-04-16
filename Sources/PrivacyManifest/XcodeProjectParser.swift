@@ -115,7 +115,14 @@ class XcodeProjectParser: ProjectParser {
                 }))
             }
 
-            let sourceFiles = try target.sourceFiles()
+            var sourceFiles: [PBXFileElement] = []
+            do {
+                sourceFiles = try target.sourceFiles()
+            }
+            catch is PBXObjectError {
+                // Suppress PBXObjectError
+            }
+
             let spinner = concurrentStream.createSilentSpinner(with: "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...")
             concurrentStream.start(spinner: spinner)
             queue.async(group: group,

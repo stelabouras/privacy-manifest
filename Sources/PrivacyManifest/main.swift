@@ -23,7 +23,7 @@ required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.12",
+        version: "0.0.13",
         subcommands: [Analyze.self])
 }
 
@@ -200,7 +200,18 @@ The path to the directory where the privacy manifest file will be generated (Opt
                           outputPath: Path) {
         var manifestReasons: [PrivacyManifestDataStructure.PrivacyAccessedAPIType] = []
 
-        requiredAPIs.forEach { (key, value) in
+        // Show the THIRD_PARTY_SDK_KEY first
+        requiredAPIs.sorted {
+            if $0.key == .THIRD_PARTY_SDK_KEY {
+                return true
+            }
+            else if $1.key == .THIRD_PARTY_SDK_KEY {
+                return false
+            }
+            else {
+                return $0.key < $1.key
+            }
+        }.forEach { (key, value) in
             guard value.count > 0, key.reasons.count > 0 else {
                 return
             }
@@ -239,7 +250,7 @@ The path to the directory where the privacy manifest file will be generated (Opt
 
             print("\(CliSyntaxColor.CYAN)⚓︎ \(key.link)\(CliSyntaxColor.END)\n")
 
-            print("Enter the values that match your case (comma separated, enter for none): ",
+            print("Enter the values \(1)-\(reasonKeys.count) that match your case (comma separated for multiple values, ENTER for none): ",
                   terminator: "")
 
             var manifestReasonKeys: [String] = []

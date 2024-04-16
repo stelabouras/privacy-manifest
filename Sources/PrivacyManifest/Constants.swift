@@ -28,7 +28,7 @@ let PACKAGE_SWIFT_FILENAME = "Package.swift"
 let XCODE_PROJECT_PATH_EXTENSION = "xcodeproj"
 let XCODE_WORKSPACE_PATH_EXTENSION = "xcworkspace"
 
-enum RequiredReasonKey: CaseIterable {
+enum RequiredReasonKey: CaseIterable, Comparable {
     case FILE_TIMESTAMP_APIS_KEY
     case SYSTEM_BOOT_APIS_KEY
     case DISK_SPACE_APIS_KEY

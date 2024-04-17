@@ -271,8 +271,8 @@ Apple Mobile Device Management Protocol Reference documentation.
         case .THIRD_PARTY_SDK_KEY:
             return [
                 "reason" : """
-
-+---------------------------------------------------------------------------------+
+\(CliSyntaxColor.BLUE_BRIGHT)
+ℹ---------------------------------------------------------------------------------+
 | You must include the privacy manifest for any of the above SDKs when you submit |
 | new apps in App Store Connect that include those SDKs, or when you submit an    |
 | app update that adds one of the listed SDKs as part of the update.              |
@@ -280,7 +280,7 @@ Apple Mobile Device Management Protocol Reference documentation.
 | as binary dependencies. Any version of a listed SDK, as well as any SDKs that   |
 | repackage those on the list, are included in the requirement.                   |
 +---------------------------------------------------------------------------------+
-
+\(CliSyntaxColor.END)
 """]
         }
     }

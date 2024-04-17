@@ -23,7 +23,7 @@ required reason APIs
 
 !!! Disclaimer: This tool must *not* be used as the only way to generate the privacy manifest. Do your own research !!!
 """,
-        version: "0.0.14",
+        version: "0.0.15",
         subcommands: [Analyze.self])
 }
 
@@ -236,9 +236,9 @@ The path to the directory where the privacy manifest file will be generated (Opt
                 }
                 print("\n\(CliSyntaxColor.WHITE_BOLD)WARNING:\(CliSyntaxColor.END) The following third-party SDKs were detected:\n")
                 print("* \(results.joined(separator: "\n* "))")
-                print("\(CliSyntaxColor.WHITE_BOLD)\(reason.value)\(CliSyntaxColor.END)")
+                print(reason.value)
                 print("\(CliSyntaxColor.CYAN)⚓︎ \(key.link)\(CliSyntaxColor.END)\n")
-                print("Hit ENTER to continue: ", terminator: "")
+                print("ENTER to continue", terminator: "")
                 _ = readLine()
                 return
             }
@@ -263,7 +263,7 @@ The path to the directory where the privacy manifest file will be generated (Opt
 
             print("\(CliSyntaxColor.CYAN)⚓︎ \(key.link)\(CliSyntaxColor.END)\n")
 
-            print("Enter the values \(1)-\(reasonKeys.count) that match your case (comma separated for multiple values, ENTER for none): ",
+            print("Enter values \(1)-\(reasonKeys.count) that match your case (comma separated for multiple values, ENTER for none): ",
                   terminator: "")
 
             var manifestReasonKeys: [String] = []
@@ -303,6 +303,16 @@ The path to the directory where the privacy manifest file will be generated (Opt
         do {
             try PropertyListEncoder().encode(privacyManifestDataStructure).write(to: outputPath.url)
             print("\(CliSyntaxColor.GREEN)✔\(CliSyntaxColor.END) Privacy Manifest file was generated successfully at \(CliSyntaxColor.WHITE_BOLD)\(outputPath.absolute())\(CliSyntaxColor.END)")
+            print("""
+\(CliSyntaxColor.YELLOW_BRIGHT)
+⚠--------------------------- Disclaimer ---------------------------+
+| Check the values of the generated Privacy Manifest file before   |
+| submitting your application to the App Store for review, as only |
+| the values of the NSPrivacyAccessedAPITypes dictionary are based |
+| on your responses.                                               |
++------------------------------------------------------------------+
+\(CliSyntaxColor.END)
+""")
         } catch {
             print("\(CliSyntaxColor.RED)✖ Error generating Privacy Manifest file: \(error)\(CliSyntaxColor.END)")
         }

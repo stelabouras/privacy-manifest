@@ -25,9 +25,13 @@ You can either use the tool by typing: `swift run privacy-manifest` in the root
 directory of the project, or you can install the executable to `/usr/local/bin`
 directory so that you can call it from any folder.
 
-In order to copy the executable, you can first build the project with
-`swift build -c release` and then copy it with
-`cp .build/release/privacy-manifest /usr/local/bin/privacy-manifest`.
+Check out the project and run the following command in the project root 
+to install the binary to `/usr/local/bin`.
+
+```sh
+sudo make install
+```
+
 
 ## Usage
 

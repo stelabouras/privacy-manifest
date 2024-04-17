@@ -78,7 +78,7 @@ class SwiftPackageProjectParser : ProjectParser {
             }
 
             let dependencyString = dependency.canonicalLocation.description
-            let spinner = concurrentStream.createSilentSpinner(with: "Parsing \(dependencyString) dependency...")
+            let spinner = concurrentStream.createSilentSpinner(with: "Parsing \(CliSyntaxColor.GREEN)\(dependencyString)\(CliSyntaxColor.END) dependency...")
             concurrentStream.start(spinner: spinner)
             queue.async(group: group,
                         execute: DispatchWorkItem(block: {
@@ -97,7 +97,7 @@ class SwiftPackageProjectParser : ProjectParser {
                                             with: PresentedResult(filePath: foundInBuildPhase))
                 }
                 self.concurrentStream.success(spinner: spinner,
-                                              "Parsed \(dependencyString) dependency")
+                                              "Parsed \(CliSyntaxColor.GREEN)\(dependencyString)\(CliSyntaxColor.END) dependency")
             }))
         }
 
@@ -128,7 +128,7 @@ class SwiftPackageProjectParser : ProjectParser {
                                             targetName: target.name,
                                             spinner: spinner)
                         self.concurrentStream.success(spinner: spinner,
-                                                      "Parsed \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
+                                                      "Parsed \(filePathsForParsing.count) \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
                     }
                     catch {
                         self.concurrentStream.error(spinner: spinner,

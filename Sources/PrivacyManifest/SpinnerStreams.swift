@@ -28,7 +28,7 @@ class ConcurrentSpinnerStream {
     private let spinnersGroup = DispatchGroup()
 
     init() {
-        hideCursor()
+        Self.hideCursor()
     }
 
     // Renders the added silent spinner streams
@@ -63,20 +63,24 @@ class ConcurrentSpinnerStream {
         previousRows = linesRendered
     }
 
-    func hideCursor() {
-        // Hides the cursor from console
+    // Hides the cursor from console
+    static func hideCursor() {
         print("\u{001B}[?25l", terminator: "")
         fflush(stdout)
     }
-    
+
+    // Shows the cursor to console
+    static func showCursor() {
+        print("\u{001B}[?25h", terminator: "")
+        fflush(stdout)
+    }
+
     func waitAndShowCursor() {
         // Wait until all async requests have been printed
         _ = spinnersGroup.wait(timeout: .distantFuture)
         _ = group.wait(timeout: .distantFuture)
 
-        // Shows the cursor to console
-        print("\u{001B}[?25h", terminator: "")
-        fflush(stdout)
+        Self.showCursor()
 
         silentSpinnerStreams.removeAll()
         previousRows = 0

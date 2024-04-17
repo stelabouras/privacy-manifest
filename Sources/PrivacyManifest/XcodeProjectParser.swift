@@ -19,10 +19,12 @@ class XcodeWorkspaceParser: XcodeProjectParser {
 
         let xcworkspace = try XCWorkspace(path: projectPath)
 
-        try xcworkspace.data.children.forEach { element in
+        try xcworkspace.data.children.filter {
+            Path($0.location.path).extension == XCODE_PROJECT_PATH_EXTENSION
+        }.forEach { element in
             print("\(CliSyntaxColor.WHITE_BOLD)\(element.location.path)\(CliSyntaxColor.END)")
 
-            concurrentStream.hideCursor()
+            ConcurrentSpinnerStream.hideCursor()
 
             let projectPath = projectPath.parent() + Path(element.location.path)
 
@@ -33,6 +35,14 @@ class XcodeWorkspaceParser: XcodeProjectParser {
 
 // Parses all targets' supported source files and frameworks.
 class XcodeProjectParser: ProjectParser {
+    var deepLibraryFrameworkCheck = false
+
+    init(with path: Path,
+         deepLibraryFrameworkCheck: Bool = false) {
+        super.init(with: path)
+        self.deepLibraryFrameworkCheck = deepLibraryFrameworkCheck
+    }
+
     override func parse() throws {
         print("---")
 
@@ -41,6 +51,49 @@ class XcodeProjectParser: ProjectParser {
 
     fileprivate func parseProject(_ path: Path) throws {
         let xcodeproj = try XcodeProj(path: path)
+
+        // Gather all local and remote package dependencies from the root
+        // project.
+        var packageDepedencyNames: [String] = []
+        do {
+            try xcodeproj.pbxproj.rootProject()?.localPackages.compactMap {
+                $0.name
+            }.forEach {
+                packageDepedencyNames.append($0)
+            }
+            try xcodeproj.pbxproj.rootProject()?.remotePackages.compactMap {
+                $0.name
+            }.forEach {
+                packageDepedencyNames.append($0)
+            }
+        }
+        catch {
+            // Suppress any errors due to missing references.
+        }
+
+        packageDepedencyNames.forEach { packageDepedencyName in
+            let spinner = concurrentStream.createSilentSpinner(with: "Looking up \(CliSyntaxColor.GREEN)\(packageDepedencyName)'s\(CliSyntaxColor.END) package dependency...")
+            concurrentStream.start(spinner: spinner)
+            queue.async(group: group,
+                        execute: DispatchWorkItem(block: {
+                SDKS_TO_CHECK.forEach { (key, value) in
+                    let markedResults = Self.mark(searchString: key,
+                                                  in: packageDepedencyName,
+                                                  lineNumber: nil,
+                                                  caseInsensitive: true,
+                                                  requiredReasonKeys: [value])
+                    guard let firstResult = markedResults.first?.1 else {
+                        return
+                    }
+                    let highlightedCode = "\(Self.addBracketsToString(firstResult.line,around: firstResult.range))"
+                    let foundInBuildPhase = "Found \(highlightedCode) in Package Dependencies."
+                    self.updateRequiredAPIs(value,
+                                            with: PresentedResult(filePath: foundInBuildPhase))
+                }
+                self.concurrentStream.success(spinner: spinner,
+                                              "Parsed \(CliSyntaxColor.GREEN)\(packageDepedencyName)\(CliSyntaxColor.END) package dependency")
+            }))
+        }
 
         try xcodeproj.pbxproj.nativeTargets.forEach { target in
             guard let productType = target.productType else {
@@ -52,7 +105,7 @@ class XcodeProjectParser: ProjectParser {
                 return
             }
 
-            if productType == .staticLibrary 
+            if productType == .staticLibrary
                 || productType == .staticFramework
                 || productType == .framework
                 || productType == .xcFramework {
@@ -77,6 +130,12 @@ class XcodeProjectParser: ProjectParser {
                     self.concurrentStream.success(spinner: spinner,
                                                   "Looked up \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) name")
                 }))
+                // Do not proceed into looking at the build phase or the source
+                // files of the project targets that are libraries or frameworks
+                // if not instructed.
+                if !deepLibraryFrameworkCheck {
+                    return
+                }
             }
 
             // https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
@@ -130,13 +189,13 @@ class XcodeProjectParser: ProjectParser {
                 do {
                     var filePathsForParsing: [Path] = []
                     try sourceFiles.forEach { file in
-                        guard let path = file.path,
-                              let ext = Path(path).extension,
+                        guard let filePath = file.path,
+                              let ext = Path(filePath).extension,
                               ALLOWED_EXTENSIONS.contains(ext)
                         else {
                             return
                         }
-                        guard let fullPath = try file.fullPath(sourceRoot: self.projectPath.parent()) else {
+                        guard let fullPath = try file.fullPath(sourceRoot: path.parent()) else {
                             return
                         }
                         filePathsForParsing.append(fullPath)
@@ -145,7 +204,7 @@ class XcodeProjectParser: ProjectParser {
                                         targetName: target.name,
                                         spinner: spinner)
                     self.concurrentStream.success(spinner: spinner,
-                                                  "Parsed \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
+                                                  "Parsed \(filePathsForParsing.count) \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
                 }
                 catch {
                     self.concurrentStream.error(spinner: spinner,

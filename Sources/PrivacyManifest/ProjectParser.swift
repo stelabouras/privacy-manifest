@@ -48,10 +48,9 @@ class ProjectParser {
         guard filePathsForParsing.count > 0 else {
             return
         }
-        let targetGroup = DispatchGroup()
         var parsed = 1
         for filePath in filePathsForParsing {
-            self.queue.async(group: targetGroup,
+            self.queue.async(group: group,
                              execute: DispatchWorkItem(block: {
                 defer {
                     parsed += 1
@@ -87,7 +86,6 @@ class ProjectParser {
                 }
             }))
         }
-        _ = targetGroup.wait(timeout: .distantFuture)
     }
 
     final func updateRequiredAPIs(_ key: RequiredReasonKey,

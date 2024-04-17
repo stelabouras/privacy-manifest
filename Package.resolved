@@ -113,8 +113,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-driver.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "e48fbbf3e00faa99e54e6a5855d5ae845f04f504"
+        "branch" : "release/5.10",
+        "revision" : "46bd60c4934aa8512061b8182f59dcc5f0a25fd0"
       }
     },
     {
@@ -122,17 +122,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-llbuild.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "20b80936211a0c3f4d39927b0a8199215a210cee"
+        "branch" : "release/5.10",
+        "revision" : "fd7c2e0d9279edd023ced6b0a590f8407f5472f9"
       }
     },
     {
       "identity" : "swift-package-manager",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-package-manager.git",
+      "location" : "https://github.com/apple/swift-package-manager",
       "state" : {
-        "branch" : "main",
-        "revision" : "f4ab9a43f3cfbb8f184043435f925b67b0070f36"
+        "branch" : "release/5.10",
+        "revision" : "a0e7a8aef2989e315d0fe2180a5cbe2b9c8dc150"
       }
     },
     {
@@ -149,8 +149,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-tools-support-core.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "930e82e5ae2432c71fe05f440b5d778285270bdb"
+        "branch" : "release/5.10",
+        "revision" : "3695ee46daf7604bec9e16337a60aa62cd261774"
       }
     },
     {

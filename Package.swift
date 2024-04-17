@@ -14,13 +14,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser",
-                 from: "1.2.2"),
+                 exact: "1.2.3"),
         .package(url: "https://github.com/apple/swift-package-manager",
-                 branch: "main"),
+                 branch: "release/5.10"),
         .package(url: "https://github.com/tuist/XcodeProj",
-                 .upToNextMajor(from: "8.20.0")),
+                 exact: "8.20.0"),
         .package(url: "https://github.com/dominicegginton/Spinner",
-                 from: "2.1.0")
+                 exact: "2.1.0")
     ],
     targets: [
         .executableTarget(

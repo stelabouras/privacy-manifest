@@ -26,10 +26,10 @@ directory of the project, or you can install the executable to `/usr/local/bin`
 directory so that you can call it from any folder.
 
 Check out the project and run the following command in the project root 
-to install the binary to `/usr/local/bin` (may require sudo).
+to install the binary to `/usr/local/bin`.
 
 ```sh
-make install
+sudo make install
 ```
 
 

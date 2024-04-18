@@ -184,33 +184,30 @@ class XcodeProjectParser: ProjectParser {
 
             let spinner = concurrentStream.createSilentSpinner(with: "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...")
             concurrentStream.start(spinner: spinner)
-            queue.async(group: group,
-                        execute: DispatchWorkItem(block: {
-                do {
-                    var filePathsForParsing: [Path] = []
-                    try sourceFiles.forEach { file in
-                        guard let filePath = file.path,
-                              let ext = Path(filePath).extension,
-                              ALLOWED_EXTENSIONS.contains(ext)
-                        else {
-                            return
-                        }
-                        guard let fullPath = try file.fullPath(sourceRoot: path.parent()) else {
-                            return
-                        }
-                        filePathsForParsing.append(fullPath)
+            do {
+                var filePathsForParsing: [Path] = []
+                try sourceFiles.forEach { file in
+                    guard let filePath = file.path,
+                          let ext = Path(filePath).extension,
+                          ALLOWED_EXTENSIONS.contains(ext)
+                    else {
+                        return
                     }
-                    try self.parseFiles(filePathsForParsing: filePathsForParsing,
-                                        targetName: target.name,
-                                        spinner: spinner)
-                    self.concurrentStream.success(spinner: spinner,
-                                                  "Parsed \(filePathsForParsing.count) \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
+                    guard let fullPath = try file.fullPath(sourceRoot: path.parent()) else {
+                        return
+                    }
+                    filePathsForParsing.append(fullPath)
                 }
-                catch {
-                    self.concurrentStream.error(spinner: spinner,
-                                                "Error parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
-                }
-            }))
+                try self.parseFiles(filePathsForParsing: filePathsForParsing,
+                                    targetName: target.name,
+                                    spinner: spinner)
+                self.concurrentStream.success(spinner: spinner,
+                                              "Parsed \(filePathsForParsing.count) \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
+            }
+            catch {
+                self.concurrentStream.error(spinner: spinner,
+                                            "Error parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
+            }
         }
 
         _ = group.wait(timeout: .distantFuture)

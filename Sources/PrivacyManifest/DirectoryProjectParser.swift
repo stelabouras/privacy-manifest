@@ -18,28 +18,25 @@ class DirectoryProjectParser: ProjectParser {
         let targetName = projectPath.lastComponent
         let spinner = concurrentStream.createSilentSpinner(with: "Parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files...")
         concurrentStream.start(spinner: spinner)
-        queue.async(group: group,
-                    execute: DispatchWorkItem(block: {
-            do {
-                var filePathsForParsing: [Path] = []
-                try self.projectPath.recursiveChildren().forEach { path in
-                    guard let ext = path.extension,
-                          ALLOWED_EXTENSIONS.contains(ext) else {
-                        return
-                    }
-                    filePathsForParsing.append(path)
+        do {
+            var filePathsForParsing: [Path] = []
+            try self.projectPath.recursiveChildren().forEach { path in
+                guard let ext = path.extension,
+                      ALLOWED_EXTENSIONS.contains(ext) else {
+                    return
                 }
-                try self.parseFiles(filePathsForParsing: filePathsForParsing,
-                                    targetName: targetName,
-                                    spinner: spinner)
-                self.concurrentStream.success(spinner: spinner,
-                                              "Parsed \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files")
+                filePathsForParsing.append(path)
             }
-            catch {
-                self.concurrentStream.error(spinner: spinner,
-                                            "Error parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
-            }
-        }))
+            try self.parseFiles(filePathsForParsing: filePathsForParsing,
+                                targetName: targetName,
+                                spinner: spinner)
+            self.concurrentStream.success(spinner: spinner,
+                                          "Parsed \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files")
+        }
+        catch {
+            self.concurrentStream.error(spinner: spinner,
+                                        "Error parsing \(CliSyntaxColor.GREEN)\(targetName)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
+        }
 
         _ = group.wait(timeout: .distantFuture)
         concurrentStream.waitAndShowCursor()

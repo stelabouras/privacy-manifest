@@ -47,6 +47,8 @@ extension UserToolchain {
 // Parses all the Swift Package's supported source files and dependencies.
 class SwiftPackageProjectParser : ProjectParser {
     override func parse() throws {
+        print("---")
+
         let spinner = Spinner(.dots8Bit,
                               "Resolving graph...")
         spinner.start()
@@ -112,33 +114,32 @@ class SwiftPackageProjectParser : ProjectParser {
 
                 let spinner = concurrentStream.createSilentSpinner(with: "Parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files...")
                 concurrentStream.start(spinner: spinner)
-                queue.async(group: group,
-                            execute: DispatchWorkItem(block: {
-                    var filePathsForParsing: [Path] = []
-                    let rootDirectory = target.sources.root
-                    target.sources.relativePaths.forEach { relativePath in
-                        guard let ext = relativePath.extension,
-                              ALLOWED_EXTENSIONS.contains(ext) else {
-                            return
-                        }
-                        filePathsForParsing.append(Path(rootDirectory.pathString) + relativePath.pathString)
+                var filePathsForParsing: [Path] = []
+                let rootDirectory = target.sources.root
+                target.sources.relativePaths.forEach { relativePath in
+                    guard let ext = relativePath.extension,
+                          ALLOWED_EXTENSIONS.contains(ext) else {
+                        return
                     }
-                    do {
-                        try self.parseFiles(filePathsForParsing: filePathsForParsing,
-                                            targetName: target.name,
-                                            spinner: spinner)
-                        self.concurrentStream.success(spinner: spinner,
-                                                      "Parsed \(filePathsForParsing.count) \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
-                    }
-                    catch {
-                        self.concurrentStream.error(spinner: spinner,
-                                                    "Error parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
-                    }
-                }))
+                    filePathsForParsing.append(Path(rootDirectory.pathString) + relativePath.pathString)
+                }
+                do {
+                    try self.parseFiles(filePathsForParsing: filePathsForParsing,
+                                        targetName: target.name,
+                                        spinner: spinner)
+                    self.concurrentStream.success(spinner: spinner,
+                                                  "Parsed \(filePathsForParsing.count) \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files")
+                }
+                catch {
+                    self.concurrentStream.error(spinner: spinner,
+                                                "Error parsing \(CliSyntaxColor.GREEN)\(target.name)'s\(CliSyntaxColor.END) source files: \(CliSyntaxColor.RED)\(error)\(CliSyntaxColor.END)")
+                }
             }
         }
 
         _ = group.wait(timeout: .distantFuture)
         concurrentStream.waitAndShowCursor()
+
+        print("---")
     }
 }
